@@ -1,30 +1,88 @@
-<form id="form">
-  ...
-</form>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>簡易 Firebase 記帳測試</title>
+</head>
+<body>
+  <h2>記帳測試</h2>
+  <form id="form">
+    <select id="type">
+      <option value="income">收入</option>
+      <option value="expense">支出</option>
+    </select>
+    <input id="amount" type="number" placeholder="金額" required />
+    <input id="note" type="text" placeholder="備註" />
+    <input id="date" type="date" required />
+    <button type="submit">新增</button>
+  </form>
 
-<script type="module">
-  ...
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const type = document.querySelector("#type").value;
-    const amount = parseInt(document.querySelector("#amount").value);
-    const note = document.querySelector("#note").value;
-    const date = document.querySelector("#date").value;
+  <h3>記帳資料</h3>
+  <ul id="list"></ul>
 
-    console.log("表單送出中...");
-    console.log({ type, amount, note, date });
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-firestore.js";
 
-    if (!amount || !date) return alert("金額與日期不可空白");
+    // 你的 Firebase 配置，請換成自己的
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
+      authDomain: "project-1743045136631756226.firebaseapp.com",
+      projectId: "project-1743045136631756226",
+      storageBucket: "project-1743045136631756226.firebasestorage.app",
+      messagingSenderId: "660576126542",
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+      measurementId: "G-31VC1RK1HK"
+    };
 
-    await addDoc(colRef, {
-      type,
-      amount,
-      note,
-      date,
-      createdAt: serverTimestamp()
+    // 初始化 Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const colRef = collection(db, "records");
+
+    const form = document.getElementById("form");
+    const list = document.getElementById("list");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const type = document.getElementById("type").value;
+      const amount = parseInt(document.getElementById("amount").value);
+      const note = document.getElementById("note").value;
+      const date = document.getElementById("date").value;
+
+      if (!amount || !date) {
+        alert("請填寫金額與日期");
+        return;
+      }
+
+      try {
+        await addDoc(colRef, {
+          type,
+          amount,
+          note,
+          date,
+          createdAt: serverTimestamp()
+        });
+        form.reset();
+        console.log("新增成功");
+      } catch (error) {
+        console.error("新增失敗:", error);
+      }
     });
 
-    console.log("已新增一筆資料");
-    form.reset();
-  });
-</script>
+    // 監聽資料變化，並排序最新在前
+    const q = query(colRef, orderBy("createdAt", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      list.innerHTML = "";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const li = document.createElement("li");
+        li.textContent = `[${data.date}] ${data.type}：${data.amount}元，備註：${data.note || "-"}`;
+        list.appendChild(li);
+      });
+    });
+  </script>
+</body>
+</html>
