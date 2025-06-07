@@ -2,20 +2,20 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>記帳本</title>
+  <title>Firebase 記帳本</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
+    // 🔧 使用你提供的新 Firebase 設定
     const firebaseConfig = {
-      apiKey: "AIzaSyAvLL3Vz8ESQprn1EvxxZOvIk3Ut4W-hao",
-      authDomain: "project-6568462401310928010.firebaseapp.com",
-      databaseURL: "https://project-6568462401310928010-default-rtdb.firebaseio.com",
-      projectId: "project-6568462401310928010",
-      storageBucket: "project-6568462401310928010.firebasestorage.app",
-      messagingSenderId: "436313090809",
-      appId: "1:436313090809:web:83fb09f7e1831484a61028",
-      measurementId: "G-1VE6VT2EH2"
+      apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
+      authDomain: "project-1743045136631756226.firebaseapp.com",
+      projectId: "project-1743045136631756226",
+      storageBucket: "project-1743045136631756226.firebasestorage.app",
+      messagingSenderId: "660576126542",
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+      measurementId: "G-31VC1RK1HK"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -26,7 +26,7 @@
       const form = document.querySelector("#form");
       const list = document.querySelector("#records");
 
-      // 新增資料
+      // ✅ 新增資料
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const type = document.querySelector("#type").value;
@@ -47,7 +47,7 @@
         form.reset();
       });
 
-      // 監聽 Firestore 即時資料
+      // ✅ 監聽 Firestore 即時資料
       onSnapshot(colRef, (snapshot) => {
         list.innerHTML = "";
         snapshot.docs.forEach(docSnap => {
@@ -62,17 +62,19 @@
         });
       });
 
-      // 刪除
+      // ✅ 刪除資料
       window.deleteData = async (id) => {
         await deleteDoc(doc(db, "records", id));
       };
     });
   </script>
   <style>
-    body { font-family: sans-serif; padding: 2em; }
-    form input, form select { margin: 0.5em; }
+    body { font-family: sans-serif; padding: 2em; max-width: 600px; margin: auto; }
+    h1 { text-align: center; }
+    form input, form select { margin: 0.5em 0; padding: 0.5em; width: 100%; }
+    button { padding: 0.5em; margin-top: 0.5em; width: 100%; }
     ul { padding-left: 0; list-style: none; }
-    li { margin: 0.5em 0; }
+    li { margin: 0.5em 0; padding: 0.5em; border-bottom: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -83,9 +85,9 @@
       <option value="expense">支出</option>
     </select>
     <input type="number" id="amount" placeholder="金額" required />
-    <input type="text" id="note" placeholder="備註" />
+    <input type="text" id="note" placeholder="備註（可選）" />
     <input type="date" id="date" required />
-    <button type="submit">新增</button>
+    <button type="submit">新增記帳</button>
   </form>
   <ul id="records"></ul>
 </body>
