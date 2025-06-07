@@ -2,8 +2,35 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>記帳與收入累積圖表</title>
+  <title>記帳與收入累積圖表（含刪除）</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #aaa;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    button.delete-btn {
+      background-color: #e74c3c;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    button.delete-btn:hover {
+      background-color: #c0392b;
+    }
+  </style>
 </head>
 <body>
   <h2>記帳系統</h2>
@@ -42,9 +69,25 @@
 
   <canvas id="chart" width="800" height="400"></canvas>
 
+  <h3>所有記錄</h3>
+  <table id="recordsTable">
+    <thead>
+      <tr>
+        <th>日期</th>
+        <th>類型</th>
+        <th>金額</th>
+        <th>備註</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- 資料列由 JS 動態產生 -->
+    </tbody>
+  </table>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     // Firebase config
     const firebaseConfig = {
@@ -67,6 +110,7 @@
     const monthIncomeEl = document.getElementById("monthIncome");
     const monthExpenseEl = document.getElementById("monthExpense");
     const ctx = document.getElementById("chart").getContext('2d');
+    const recordsTableBody = document.querySelector("#recordsTable tbody");
 
     let allData = [];
     let chart;
@@ -91,12 +135,13 @@
 
       try {
         await addDoc(colRef, { type, amount, note, date });
-        alert("✅ 成功寫入！");
+        alert("✅ 成功新增！");
         form.reset();
         await loadData();
+        renderTable();
         renderChart();
       } catch (err) {
-        alert("❌ 寫入失敗：" + err.message);
+        alert("❌ 新增失敗：" + err.message);
         console.error(err);
       }
     });
@@ -105,12 +150,54 @@
     async function loadData() {
       allData = [];
       const snapshot = await getDocs(colRef);
-      snapshot.forEach(doc => {
-        const data = doc.data();
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
         allData.push({
+          id: docSnap.id,  // 保留 id 以便刪除
           ...data,
           amount: Number(data.amount),
           date: data.date // yyyy-mm-dd 字串
+        });
+      });
+    }
+
+    // 渲染資料表
+    function renderTable() {
+      recordsTableBody.innerHTML = "";
+      if(allData.length === 0){
+        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無任何記錄</td></tr>`;
+        return;
+      }
+      allData.sort((a,b) => new Date(b.date) - new Date(a.date)); // 日期由新到舊
+
+      allData.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.date}</td>
+          <td>${item.type === "income" ? "收入" : "支出"}</td>
+          <td>${item.amount.toFixed(2)}</td>
+          <td>${item.note || ""}</td>
+          <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
+        `;
+        recordsTableBody.appendChild(tr);
+      });
+
+      // 加事件監聽器給刪除按鈕
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async e => {
+          const id = e.target.dataset.id;
+          if(confirm("確定要刪除這筆記錄嗎？")) {
+            try {
+              await deleteDoc(doc(db, "records", id));
+              alert("✅ 已刪除");
+              await loadData();
+              renderTable();
+              renderChart();
+            } catch (err) {
+              alert("❌ 刪除失敗：" + err.message);
+              console.error(err);
+            }
+          }
         });
       });
     }
@@ -122,10 +209,17 @@
 
     // 頁面初始載入
     await loadData();
+    renderTable();
     renderChart();
 
     function renderChart() {
-      if (!allData.length) return;
+      if (!allData.length) {
+        if(chart) chart.destroy();
+        totalIncomeEl.textContent = "0";
+        monthIncomeEl.textContent = "0";
+        monthExpenseEl.textContent = "0";
+        return;
+      }
 
       const selectedMonth = monthPicker.value; // 格式 yyyy-mm
       if (!selectedMonth) return;
@@ -201,17 +295,14 @@
       allDates.forEach(dateStr => {
         let dayIncome = 0;
         const d = new Date(dateStr);
-        // 如果是當月，使用 dailyIncome 物件取值
         if(d >= monthStartDate && d <= monthEndDate) {
           dayIncome = dailyIncome[dateStr] || 0;
         } else {
-          // 非當月日期，從 yearData 撈出收入
           const dayData = yearData.filter(item => item.date === dateStr && item.type === 'income');
           dayIncome = dayData.reduce((acc, cur) => acc + cur.amount, 0);
         }
         cumulativeSum += dayIncome;
 
-        // 只保留當月日期累積，用於圖表
         if(d >= monthStartDate && d <= monthEndDate) {
           incomeCumulative.push(cumulativeSum);
         }
