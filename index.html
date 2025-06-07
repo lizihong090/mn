@@ -2,45 +2,28 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>Firebase 雲端記帳系統</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { max-width: 600px; margin: 20px auto; font-family: Arial, sans-serif; }
-    form input, form select, form button { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; }
-    ul { list-style: none; padding-left: 0; }
-    li { background: #f0f0f0; margin: 5px 0; padding: 8px; display: flex; justify-content: space-between; align-items: center; }
-    button.delete-btn { background: #e74c3c; border: none; color: white; padding: 4px 8px; cursor: pointer; }
-    .month-picker { margin-bottom: 20px; }
-  </style>
+  <title>Firebase 記帳測試</title>
 </head>
 <body>
-  <h2>Firebase 雲端記帳系統</h2>
-
-  <form id="recordForm">
-    <input type="text" id="item" placeholder="項目名稱" required />
-    <input type="number" id="amount" placeholder="金額" min="0" required />
+  <h2>記帳測試</h2>
+  <form id="form">
     <select id="type">
       <option value="income">收入</option>
       <option value="expense">支出</option>
     </select>
-    <input type="date" id="date" required />
-    <button type="submit">新增紀錄</button>
+    <input id="amount" type="number" placeholder="金額" required />
+    <input id="note" type="text" placeholder="備註" />
+    <input id="date" type="date" required />
+    <button type="submit">新增</button>
   </form>
 
-  <div class="month-picker">
-    <label for="monthSelect">選擇月份：</label>
-    <input type="month" id="monthSelect" />
-  </div>
-
-  <h3>紀錄清單</h3>
-  <ul id="recordList"></ul>
-
-  <h3>當月統計圖表</h3>
-  <canvas id="chart" height="300"></canvas>
+  <h3>目前資料</h3>
+  <ul id="output"></ul>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
 
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
@@ -56,173 +39,39 @@
     const db = getFirestore(app);
     const colRef = collection(db, "records");
 
-    const recordForm = document.getElementById('recordForm');
-    const itemInput = document.getElementById('item');
-    const amountInput = document.getElementById('amount');
-    const typeSelect = document.getElementById('type');
-    const dateInput = document.getElementById('date');
-    const recordList = document.getElementById('recordList');
-    const monthSelect = document.getElementById('monthSelect');
-    const ctx = document.getElementById('chart').getContext('2d');
+    const form = document.getElementById("form");
+    const output = document.getElementById("output");
 
-    // 預設日期為今天
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${String(today.getDate()).padStart(2,'0')}`;
-    monthSelect.value = `${yyyy}-${mm}`;
-
-    let chart;
-
-    // 新增紀錄
-    recordForm.addEventListener('submit', async e => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const item = itemInput.value.trim();
-      const amount = Number(amountInput.value);
-      const type = typeSelect.value;
-      const date = dateInput.value;
-
-      if (!item || !date || !amount || amount <= 0) {
-        alert('請填寫正確資料');
-        return;
-      }
+      const type = document.getElementById("type").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const note = document.getElementById("note").value;
+      const date = document.getElementById("date").value;
 
       try {
-        await addDoc(colRef, { item, amount, type, date });
-        recordForm.reset();
-        dateInput.value = new Date().toISOString().split('T')[0];
-        loadAndRender(monthSelect.value);
+        await addDoc(colRef, { type, amount, note, date });
+        alert("✅ 成功寫入！");
+        form.reset();
+        loadData();
       } catch (err) {
-        alert('新增失敗: ' + err.message);
+        alert("❌ 寫入失敗：" + err.message);
+        console.error(err);
       }
     });
 
-    // 載入資料並渲染清單與圖表
-    async function loadAndRender(filterYearMonth) {
-      recordList.innerHTML = '';
-
-      // Firestore 查詢：篩選日期以月份開頭，排序日期
-      // 由於 Firestore 不支持 startsWith 查詢，可用範圍查詢：
-      // 取該月第一天與下月第一天的日期做區間查詢
-      const startDate = filterYearMonth + '-01';
-      const [year, month] = filterYearMonth.split('-');
-      const nextMonth = (parseInt(month) % 12 + 1).toString().padStart(2, '0');
-      const nextYear = (parseInt(month) === 12) ? (parseInt(year) + 1).toString() : year;
-      const endDate = `${nextYear}-${nextMonth}-01`;
-
-      const q = query(colRef, 
-        where('date', '>=', startDate),
-        where('date', '<', endDate),
-        orderBy('date')
-      );
-
-      const snapshot = await getDocs(q);
-      const records = [];
-      snapshot.forEach(docSnap => {
-        records.push({ id: docSnap.id, ...docSnap.data() });
-      });
-
-      // 渲染列表
-      records.forEach(r => {
-        const li = document.createElement('li');
-        li.textContent = `[${r.date}] ${r.type === 'income' ? '收入' : '支出'} - ${r.item}: ${r.amount} 元`;
-        const delBtn = document.createElement('button');
-        delBtn.textContent = '刪除';
-        delBtn.className = 'delete-btn';
-        delBtn.onclick = async () => {
-          if (confirm('確定要刪除此筆紀錄嗎？')) {
-            try {
-              await deleteDoc(doc(db, 'records', r.id));
-              loadAndRender(filterYearMonth);
-            } catch (err) {
-              alert('刪除失敗: ' + err.message);
-            }
-          }
-        };
-        li.appendChild(delBtn);
-        recordList.appendChild(li);
-      });
-
-      renderChart(records, filterYearMonth);
-    }
-
-    function renderChart(records, filterYearMonth) {
-      const [year, month] = filterYearMonth.split('-');
-      const daysInMonth = new Date(year, month, 0).getDate();
-
-      const labels = [];
-      const incomeData = Array(daysInMonth).fill(0);
-      const expenseData = Array(daysInMonth).fill(0);
-      const incomeCumulative = [];
-
-      for(let d=1; d <= daysInMonth; d++) {
-        labels.push(d.toString());
-      }
-
-      let cumSum = 0;
-      records.forEach(r => {
-        const day = parseInt(r.date.split('-')[2], 10);
-        if(r.type === 'income') incomeData[day-1] += r.amount;
-        else expenseData[day-1] += r.amount;
-      });
-
-      for(let i=0; i<daysInMonth; i++) {
-        cumSum += incomeData[i];
-        incomeCumulative.push(cumSum);
-      }
-
-      if(chart) chart.destroy();
-
-      chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: '收入',
-              data: incomeData,
-              backgroundColor: 'rgba(54, 162, 235, 0.7)',
-              stack: 'Stack 0',
-              yAxisID: 'y',
-            },
-            {
-              label: '支出',
-              data: expenseData,
-              backgroundColor: 'rgba(255, 99, 132, 0.7)',
-              stack: 'Stack 0',
-              yAxisID: 'y',
-            },
-            {
-              label: '收入累積',
-              data: incomeCumulative,
-              type: 'line',
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.3)',
-              yAxisID: 'y1',
-              tension: 0.2,
-              fill: false,
-            }
-          ]
-        },
-        options: {
-          interaction: { mode: 'index', intersect: false },
-          scales: {
-            y: { type: 'linear', position: 'left', title: { display: true, text: '金額 (元)' }, stacked: true, beginAtZero: true },
-            y1: { type: 'linear', position: 'right', title: { display: true, text: '收入累積' }, beginAtZero: true, grid: { drawOnChartArea: false } }
-          },
-          plugins: { legend: { position: 'top' }, tooltip: { enabled: true } }
-        }
+    async function loadData() {
+      output.innerHTML = "";
+      const snapshot = await getDocs(colRef);
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const li = document.createElement("li");
+        li.textContent = `[${data.date}] ${data.type}: ${data.amount} 元，備註：${data.note}`;
+        output.appendChild(li);
       });
     }
 
-    // 月份切換事件
-    monthSelect.addEventListener('change', () => {
-      loadAndRender(monthSelect.value);
-    });
-
-    // 初次載入
-    loadAndRender(monthSelect.value);
-
+    loadData();
   </script>
 </body>
 </html>
