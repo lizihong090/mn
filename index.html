@@ -11,6 +11,14 @@
     li { background: #f0f0f0; margin: 5px 0; padding: 8px; display: flex; justify-content: space-between; align-items: center; }
     button.delete-btn { background: #e74c3c; border: none; color: white; padding: 4px 8px; cursor: pointer; }
     .month-picker { margin-bottom: 20px; }
+    .summary {
+      display: flex; justify-content: space-around; margin: 15px 0;
+      padding: 10px; background: #eee; border-radius: 5px;
+      font-weight: bold;
+    }
+    .summary div {
+      flex: 1; text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -30,6 +38,13 @@
   <div class="month-picker">
     <label for="monthSelect">選擇月份：</label>
     <input type="month" id="monthSelect" />
+  </div>
+
+  <!-- 新增總計區塊 -->
+  <div class="summary">
+    <div>總收入：<span id="totalIncome">0</span> 元</div>
+    <div>當月總收入：<span id="monthIncome">0</span> 元</div>
+    <div>當月總支出：<span id="monthExpense">0</span> 元</div>
   </div>
 
   <h3>紀錄清單</h3>
@@ -63,7 +78,14 @@
     const dateInput = document.getElementById('date');
     const recordList = document.getElementById('recordList');
     const monthSelect = document.getElementById('monthSelect');
+
+    // 新增統計數字顯示元素
+    const totalIncomeSpan = document.getElementById('totalIncome');
+    const monthIncomeSpan = document.getElementById('monthIncome');
+    const monthExpenseSpan = document.getElementById('monthExpense');
+
     const ctx = document.getElementById('chart').getContext('2d');
+    let chart;
 
     // 預設日期為今天
     const today = new Date();
@@ -72,9 +94,6 @@
     dateInput.value = `${yyyy}-${mm}-${String(today.getDate()).padStart(2,'0')}`;
     monthSelect.value = `${yyyy}-${mm}`;
 
-    let chart;
-
-    // 新增紀錄
     recordForm.addEventListener('submit', async e => {
       e.preventDefault();
       const item = itemInput.value.trim();
@@ -97,13 +116,21 @@
       }
     });
 
-    // 載入資料並渲染清單與圖表
+    // 讀取所有資料計算總收入
+    async function getTotalIncome() {
+      const snapshot = await getDocs(colRef);
+      let totalIncome = 0;
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.type === 'income') totalIncome += data.amount;
+      });
+      return totalIncome;
+    }
+
+    // 載入並渲染特定月份資料
     async function loadAndRender(filterYearMonth) {
       recordList.innerHTML = '';
 
-      // Firestore 查詢：篩選日期以月份開頭，排序日期
-      // 由於 Firestore 不支持 startsWith 查詢，可用範圍查詢：
-      // 取該月第一天與下月第一天的日期做區間查詢
       const startDate = filterYearMonth + '-01';
       const [year, month] = filterYearMonth.split('-');
       const nextMonth = (parseInt(month) % 12 + 1).toString().padStart(2, '0');
@@ -118,9 +145,23 @@
 
       const snapshot = await getDocs(q);
       const records = [];
+      let monthIncome = 0;
+      let monthExpense = 0;
+
       snapshot.forEach(docSnap => {
-        records.push({ id: docSnap.id, ...docSnap.data() });
+        const r = { id: docSnap.id, ...docSnap.data() };
+        records.push(r);
+        if(r.type === 'income') monthIncome += r.amount;
+        else if(r.type === 'expense') monthExpense += r.amount;
       });
+
+      // 取得總收入
+      const totalIncome = await getTotalIncome();
+
+      // 更新三個數字
+      totalIncomeSpan.textContent = totalIncome.toLocaleString();
+      monthIncomeSpan.textContent = monthIncome.toLocaleString();
+      monthExpenseSpan.textContent = monthExpense.toLocaleString();
 
       // 渲染列表
       records.forEach(r => {
@@ -215,12 +256,10 @@
       });
     }
 
-    // 月份切換事件
     monthSelect.addEventListener('change', () => {
       loadAndRender(monthSelect.value);
     });
 
-    // 初次載入
     loadAndRender(monthSelect.value);
 
   </script>
