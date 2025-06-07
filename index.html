@@ -1,220 +1,92 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
-
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>記帳本 - 收入支出與累積收入折線圖</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <title>記帳本</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAvLL3Vz8ESQprn1EvxxZOvIk3Ut4W-hao",
+      authDomain: "project-6568462401310928010.firebaseapp.com",
+      databaseURL: "https://project-6568462401310928010-default-rtdb.firebaseio.com",
+      projectId: "project-6568462401310928010",
+      storageBucket: "project-6568462401310928010.firebasestorage.app",
+      messagingSenderId: "436313090809",
+      appId: "1:436313090809:web:83fb09f7e1831484a61028",
+      measurementId: "G-1VE6VT2EH2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const colRef = collection(db, "records");
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.querySelector("#form");
+      const list = document.querySelector("#records");
+
+      // 新增資料
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const type = document.querySelector("#type").value;
+        const amount = parseInt(document.querySelector("#amount").value);
+        const note = document.querySelector("#note").value;
+        const date = document.querySelector("#date").value;
+
+        if (!amount || !date) return alert("金額與日期不可空白");
+
+        await addDoc(colRef, {
+          type,
+          amount,
+          note,
+          date,
+          createdAt: serverTimestamp()
+        });
+
+        form.reset();
+      });
+
+      // 監聽 Firestore 即時資料
+      onSnapshot(colRef, (snapshot) => {
+        list.innerHTML = "";
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <b>${data.date}</b> - ${data.type === "income" ? "收入" : "支出"}：${data.amount} 元
+            ${data.note ? `｜備註：${data.note}` : ""}
+            <button onclick="deleteData('${docSnap.id}')">刪除</button>
+          `;
+          list.appendChild(li);
+        });
+      });
+
+      // 刪除
+      window.deleteData = async (id) => {
+        await deleteDoc(doc(db, "records", id));
+      };
+    });
+  </script>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    form input, form select { margin: 0.5em; }
+    ul { padding-left: 0; list-style: none; }
+    li { margin: 0.5em 0; }
+  </style>
 </head>
-
-<body class="bg-gray-100 p-6">
-    <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow space-y-6">
-        <h1 class="text-3xl font-bold text-center">記帳本（每日收入 & 支出柱狀 + 累積收入折線）</h1>
-
-        <form id="entryForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" id="item" placeholder="項目名稱" required class="border p-2 rounded" />
-            <input type="number" id="amount" placeholder="金額" required class="border p-2 rounded" />
-            <select id="type" required class="border p-2 rounded">
-        <option value="income">收入</option>
-        <option value="expense">支出</option>
-      </select>
-            <input type="date" id="date" required class="border p-2 rounded" />
-            <button type="submit" class="col-span-1 md:col-span-2 bg-blue-600 text-white rounded p-2 hover:bg-blue-700 transition">
-        新增紀錄
-      </button>
-        </form>
-
-        <section>
-            <h2 class="text-xl font-semibold mb-2">記帳紀錄</h2>
-            <ul id="records" class="divide-y border rounded max-h-60 overflow-auto bg-gray-50"></ul>
-        </section>
-
-        <section class="pt-4 border-t space-y-1">
-            <p>總收入：<span id="totalIncome" class="text-green-600 font-semibold">0</span> 元</p>
-            <p>總支出：<span id="totalExpense" class="text-red-600 font-semibold">0</span> 元</p>
-            <p class="font-bold">餘額：<span id="balance" class="font-semibold">0</span> 元</p>
-        </section>
-
-        <section class="pt-6 border-t">
-            <label for="monthPicker" class="font-semibold">選擇月份：</label>
-            <input type="month" id="monthPicker" class="border p-2 rounded mb-3" />
-            <canvas id="barChart" height="250"></canvas>
-        </section>
-    </div>
-
-    <script>
-        const entryForm = document.getElementById("entryForm");
-        const records = document.getElementById("records");
-        const totalIncome = document.getElementById("totalIncome");
-        const totalExpense = document.getElementById("totalExpense");
-        const balance = document.getElementById("balance");
-        const monthPicker = document.getElementById("monthPicker");
-
-        let entries = [];
-
-        const ctx = document.getElementById("barChart").getContext("2d");
-        const barChart = new Chart(ctx, {
-            data: {
-                labels: [],
-                datasets: [{
-                    type: 'bar',
-                    label: '每日收入',
-                    data: [],
-                    backgroundColor: '#22c55e',
-                }, {
-                    type: 'bar',
-                    label: '每日支出',
-                    data: [],
-                    backgroundColor: '#ef4444',
-                }, {
-                    type: 'line',
-                    label: '累積收入折線',
-                    data: [],
-                    borderColor: '#3b82f6',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0.3,
-                    yAxisID: 'y',
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                }
-            }
-        });
-
-        // 預設月份選擇今天所在月份
-        const today = new Date();
-        const defaultMonth = today.toISOString().slice(0, 7);
-        monthPicker.value = defaultMonth;
-
-        window.addEventListener("load", () => {
-            const saved = localStorage.getItem("entries");
-            if (saved) entries = JSON.parse(saved);
-            updateUI();
-        });
-
-        function saveToLocalStorage() {
-            localStorage.setItem("entries", JSON.stringify(entries));
-        }
-
-        entryForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            const item = document.getElementById("item").value.trim();
-            const amount = parseFloat(document.getElementById("amount").value);
-            const type = document.getElementById("type").value;
-            const date = document.getElementById("date").value;
-
-            if (!item || !amount || !date) {
-                alert("請完整填寫項目、金額與日期");
-                return;
-            }
-
-            entries.push({
-                item,
-                amount,
-                type,
-                date
-            });
-            saveToLocalStorage();
-            updateUI();
-            entryForm.reset();
-        });
-
-        function deleteEntry(index) {
-            if (confirm("確定要刪除這筆紀錄嗎？")) {
-                entries.splice(index, 1);
-                saveToLocalStorage();
-                updateUI();
-            }
-        }
-        window.deleteEntry = deleteEntry;
-
-        function updateUI() {
-            records.innerHTML = "";
-            let income = 0,
-                expense = 0;
-            entries.forEach((entry, index) => {
-                const li = document.createElement("li");
-                li.className = "flex justify-between items-center py-2 px-3";
-                li.innerHTML = `
-          <div>
-            <p class="font-semibold">${entry.item} (${entry.type === "income" ? "收入" : "支出"})</p>
-            <p class="text-sm text-gray-500">${entry.date}</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <span class="${entry.type === "income" ? "text-green-600" : "text-red-600"}">
-              ${entry.type === "income" ? "+" : "-"}${entry.amount}
-            </span>
-            <button class="text-red-500 hover:text-red-700" onclick="deleteEntry(${index})" title="刪除紀錄">🗑️</button>
-          </div>`;
-                records.appendChild(li);
-                if (entry.type === "income") income += entry.amount;
-                else expense += entry.amount;
-            });
-
-            totalIncome.textContent = income.toFixed(2);
-            totalExpense.textContent = expense.toFixed(2);
-            balance.textContent = (income - expense).toFixed(2);
-
-            updateIncomeExpenseChart(monthPicker.value);
-        }
-
-        function updateIncomeExpenseChart(monthStr) {
-            if (!monthStr) return;
-
-            const [yearStr, monthStrOnly] = monthStr.split("-");
-            const year = parseInt(yearStr);
-            const month = parseInt(monthStrOnly);
-            const daysInMonth = new Date(year, month, 0).getDate();
-
-            const labels = [];
-            const incomeByDay = Array(daysInMonth).fill(0);
-            const expenseByDay = Array(daysInMonth).fill(0);
-
-            for (let d = 1; d <= daysInMonth; d++) {
-                labels.push(`${monthStr}-${String(d).padStart(2, "0")}`);
-            }
-
-            entries.forEach(entry => {
-                if (entry.date.startsWith(monthStr)) {
-                    const day = parseInt(entry.date.split("-")[2]) - 1;
-                    if (entry.type === "income") {
-                        incomeByDay[day] += entry.amount;
-                    } else if (entry.type === "expense") {
-                        expenseByDay[day] += entry.amount;
-                    }
-                }
-            });
-
-            // 計算累積收入折線資料
-            const cumulativeIncome = [];
-            let sum = 0;
-            for (let i = 0; i < incomeByDay.length; i++) {
-                sum += incomeByDay[i];
-                cumulativeIncome[i] = sum;
-            }
-
-            barChart.data.labels = labels;
-            barChart.data.datasets[0].data = incomeByDay; // 每日收入柱狀
-            barChart.data.datasets[1].data = expenseByDay; // 每日支出柱狀
-            barChart.data.datasets[2].data = cumulativeIncome; // 累積收入折線
-            barChart.update();
-        }
-
-        monthPicker.addEventListener("change", () => {
-            updateIncomeExpenseChart(monthPicker.value);
-        });
-    </script>
+<body>
+  <h1>Firebase 記帳本</h1>
+  <form id="form">
+    <select id="type">
+      <option value="income">收入</option>
+      <option value="expense">支出</option>
+    </select>
+    <input type="number" id="amount" placeholder="金額" required />
+    <input type="text" id="note" placeholder="備註" />
+    <input type="date" id="date" required />
+    <button type="submit">新增</button>
+  </form>
+  <ul id="records"></ul>
 </body>
-
 </html>
