@@ -6,6 +6,7 @@
 </head>
 <body>
   <h2>記帳測試</h2>
+  
   <form id="form">
     <select id="type">
       <option value="income">收入</option>
@@ -20,10 +21,12 @@
   <h3>目前資料</h3>
   <ul id="output"></ul>
 
+  <!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+    // Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
       authDomain: "project-1743045136631756226.firebaseapp.com",
@@ -34,6 +37,7 @@
       measurementId: "G-31VC1RK1HK"
     };
 
+    // 初始化 Firebase 與 Firestore
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const colRef = collection(db, "records");
@@ -41,6 +45,7 @@
     const form = document.getElementById("form");
     const output = document.getElementById("output");
 
+    // 新增記錄
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const type = document.getElementById("type").value;
@@ -50,15 +55,16 @@
 
       try {
         await addDoc(colRef, { type, amount, note, date });
-        alert("成功寫入！");
+        alert("✅ 成功寫入！");
         form.reset();
-        loadData();  // 重新載入資料
+        loadData();  // 重新載入
       } catch (err) {
-        alert("寫入失敗：" + err.message);
+        alert("❌ 寫入失敗：" + err.message);
         console.error(err);
       }
     });
 
+    // 載入 Firestore 資料
     async function loadData() {
       output.innerHTML = "";
       const snapshot = await getDocs(colRef);
