@@ -2,61 +2,45 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>Firebase 雲端記帳系統</title>
+  <title>Firebase 記帳系統</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { max-width: 600px; margin: 20px auto; font-family: Arial, sans-serif; }
-    form input, form select, form button { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; }
-    ul { list-style: none; padding-left: 0; }
-    li { background: #f0f0f0; margin: 5px 0; padding: 8px; display: flex; justify-content: space-between; align-items: center; }
-    button.delete-btn { background: #e74c3c; border: none; color: white; padding: 4px 8px; cursor: pointer; }
-    .month-picker { margin-bottom: 20px; }
-    .summary {
-      display: flex; justify-content: space-around; margin: 15px 0;
-      padding: 10px; background: #eee; border-radius: 5px;
-      font-weight: bold;
-    }
-    .summary div {
-      flex: 1; text-align: center;
-    }
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; }
+    form > * { margin: 5px 0; }
   </style>
 </head>
 <body>
-  <h2>Firebase 雲端記帳系統</h2>
 
-  <form id="recordForm">
-    <input type="text" id="item" placeholder="項目名稱" required />
-    <input type="number" id="amount" placeholder="金額" min="0" required />
-    <select id="type">
+  <h2>記帳系統</h2>
+
+  <form id="form">
+    <select id="type" required>
       <option value="income">收入</option>
       <option value="expense">支出</option>
-    </select>
-    <input type="date" id="date" required />
-    <button type="submit">新增紀錄</button>
+    </select><br />
+    <input id="amount" type="number" placeholder="金額" required /><br />
+    <input id="note" type="text" placeholder="備註" /><br />
+    <input id="date" type="date" required /><br />
+    <button type="submit">新增</button>
   </form>
 
-  <div class="month-picker">
-    <label for="monthSelect">選擇月份：</label>
-    <input type="month" id="monthSelect" />
-  </div>
+  <hr />
 
-  <!-- 新增總計區塊 -->
-  <div class="summary">
-    <div>總收入：<span id="totalIncome">0</span> 元</div>
-    <div>當月總收入：<span id="monthIncome">0</span> 元</div>
-    <div>當月總支出：<span id="monthExpense">0</span> 元</div>
-  </div>
+  <label for="monthPicker">選擇月份：</label>
+  <input type="month" id="monthPicker" />
 
-  <h3>紀錄清單</h3>
-  <ul id="recordList"></ul>
+  <h3>統計資料</h3>
+  <p>總收入：<span id="totalIncome">0</span> 元</p>
+  <p>當月總收入：<span id="monthIncome">0</span> 元</p>
+  <p>當月總支出：<span id="monthExpense">0</span> 元</p>
 
-  <h3>當月統計圖表</h3>
-  <canvas id="chart" height="300"></canvas>
+  <canvas id="chart" width="700" height="350"></canvas>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
+    // Firebase config，換成你的專案設定
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
       authDomain: "project-1743045136631756226.firebaseapp.com",
@@ -71,196 +55,200 @@
     const db = getFirestore(app);
     const colRef = collection(db, "records");
 
-    const recordForm = document.getElementById('recordForm');
-    const itemInput = document.getElementById('item');
-    const amountInput = document.getElementById('amount');
-    const typeSelect = document.getElementById('type');
-    const dateInput = document.getElementById('date');
-    const recordList = document.getElementById('recordList');
-    const monthSelect = document.getElementById('monthSelect');
+    const form = document.getElementById("form");
+    const monthPicker = document.getElementById("monthPicker");
+    const totalIncomeEl = document.getElementById("totalIncome");
+    const monthIncomeEl = document.getElementById("monthIncome");
+    const monthExpenseEl = document.getElementById("monthExpense");
+    const ctx = document.getElementById("chart").getContext('2d');
 
-    // 新增統計數字顯示元素
-    const totalIncomeSpan = document.getElementById('totalIncome');
-    const monthIncomeSpan = document.getElementById('monthIncome');
-    const monthExpenseSpan = document.getElementById('monthExpense');
-
-    const ctx = document.getElementById('chart').getContext('2d');
+    let allData = [];
     let chart;
 
-    // 預設日期為今天
+    // 預設選擇當月
     const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${String(today.getDate()).padStart(2,'0')}`;
-    monthSelect.value = `${yyyy}-${mm}`;
+    monthPicker.value = today.toISOString().slice(0,7);
 
-    recordForm.addEventListener('submit', async e => {
+    // 新增記錄
+    form.addEventListener("submit", async e => {
       e.preventDefault();
-      const item = itemInput.value.trim();
-      const amount = Number(amountInput.value);
-      const type = typeSelect.value;
-      const date = dateInput.value;
 
-      if (!item || !date || !amount || amount <= 0) {
-        alert('請填寫正確資料');
+      const type = document.getElementById("type").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      const note = document.getElementById("note").value;
+      const date = document.getElementById("date").value;
+
+      if (!date || !amount || !type) {
+        alert("請完整填寫必填欄位");
         return;
       }
 
       try {
-        await addDoc(colRef, { item, amount, type, date });
-        recordForm.reset();
-        dateInput.value = new Date().toISOString().split('T')[0];
-        loadAndRender(monthSelect.value);
+        await addDoc(colRef, { type, amount, note, date });
+        alert("✅ 成功寫入！");
+        form.reset();
+        await loadData();
+        renderChart();
       } catch (err) {
-        alert('新增失敗: ' + err.message);
+        alert("❌ 寫入失敗：" + err.message);
+        console.error(err);
       }
     });
 
-    // 讀取所有資料計算總收入
-    async function getTotalIncome() {
+    // 載入所有資料
+    async function loadData() {
+      allData = [];
       const snapshot = await getDocs(colRef);
-      let totalIncome = 0;
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.type === 'income') totalIncome += data.amount;
-      });
-      return totalIncome;
-    }
-
-    // 載入並渲染特定月份資料
-    async function loadAndRender(filterYearMonth) {
-      recordList.innerHTML = '';
-
-      const startDate = filterYearMonth + '-01';
-      const [year, month] = filterYearMonth.split('-');
-      const nextMonth = (parseInt(month) % 12 + 1).toString().padStart(2, '0');
-      const nextYear = (parseInt(month) === 12) ? (parseInt(year) + 1).toString() : year;
-      const endDate = `${nextYear}-${nextMonth}-01`;
-
-      const q = query(colRef, 
-        where('date', '>=', startDate),
-        where('date', '<', endDate),
-        orderBy('date')
-      );
-
-      const snapshot = await getDocs(q);
-      const records = [];
-      let monthIncome = 0;
-      let monthExpense = 0;
-
-      snapshot.forEach(docSnap => {
-        const r = { id: docSnap.id, ...docSnap.data() };
-        records.push(r);
-        if(r.type === 'income') monthIncome += r.amount;
-        else if(r.type === 'expense') monthExpense += r.amount;
-      });
-
-      // 取得總收入
-      const totalIncome = await getTotalIncome();
-
-      // 更新三個數字
-      totalIncomeSpan.textContent = totalIncome.toLocaleString();
-      monthIncomeSpan.textContent = monthIncome.toLocaleString();
-      monthExpenseSpan.textContent = monthExpense.toLocaleString();
-
-      // 渲染列表
-      records.forEach(r => {
-        const li = document.createElement('li');
-        li.textContent = `[${r.date}] ${r.type === 'income' ? '收入' : '支出'} - ${r.item}: ${r.amount} 元`;
-        const delBtn = document.createElement('button');
-        delBtn.textContent = '刪除';
-        delBtn.className = 'delete-btn';
-        delBtn.onclick = async () => {
-          if (confirm('確定要刪除此筆紀錄嗎？')) {
-            try {
-              await deleteDoc(doc(db, 'records', r.id));
-              loadAndRender(filterYearMonth);
-            } catch (err) {
-              alert('刪除失敗: ' + err.message);
-            }
-          }
-        };
-        li.appendChild(delBtn);
-        recordList.appendChild(li);
-      });
-
-      renderChart(records, filterYearMonth);
-    }
-
-    function renderChart(records, filterYearMonth) {
-      const [year, month] = filterYearMonth.split('-');
-      const daysInMonth = new Date(year, month, 0).getDate();
-
-      const labels = [];
-      const incomeData = Array(daysInMonth).fill(0);
-      const expenseData = Array(daysInMonth).fill(0);
-      const incomeCumulative = [];
-
-      for(let d=1; d <= daysInMonth; d++) {
-        labels.push(d.toString());
-      }
-
-      let cumSum = 0;
-      records.forEach(r => {
-        const day = parseInt(r.date.split('-')[2], 10);
-        if(r.type === 'income') incomeData[day-1] += r.amount;
-        else expenseData[day-1] += r.amount;
-      });
-
-      for(let i=0; i<daysInMonth; i++) {
-        cumSum += incomeData[i];
-        incomeCumulative.push(cumSum);
-      }
-
-      if(chart) chart.destroy();
-
-      chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: '收入',
-              data: incomeData,
-              backgroundColor: 'rgba(54, 162, 235, 0.7)',
-              stack: 'Stack 0',
-              yAxisID: 'y',
-            },
-            {
-              label: '支出',
-              data: expenseData,
-              backgroundColor: 'rgba(255, 99, 132, 0.7)',
-              stack: 'Stack 0',
-              yAxisID: 'y',
-            },
-            {
-              label: '收入累積',
-              data: incomeCumulative,
-              type: 'line',
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.3)',
-              yAxisID: 'y1',
-              tension: 0.2,
-              fill: false,
-            }
-          ]
-        },
-        options: {
-          interaction: { mode: 'index', intersect: false },
-          scales: {
-            y: { type: 'linear', position: 'left', title: { display: true, text: '金額 (元)' }, stacked: true, beginAtZero: true },
-            y1: { type: 'linear', position: 'right', title: { display: true, text: '收入累積' }, beginAtZero: true, grid: { drawOnChartArea: false } }
-          },
-          plugins: { legend: { position: 'top' }, tooltip: { enabled: true } }
-        }
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        allData.push({
+          ...data,
+          amount: Number(data.amount),
+          date: data.date // yyyy-mm-dd 字串
+        });
       });
     }
 
-    monthSelect.addEventListener('change', () => {
-      loadAndRender(monthSelect.value);
+    // 月份選擇事件
+    monthPicker.addEventListener("change", () => {
+      renderChart();
     });
 
-    loadAndRender(monthSelect.value);
+    function renderChart() {
+      if (!allData.length) return;
+
+      const selectedMonth = monthPicker.value; // 格式 yyyy-mm
+      if (!selectedMonth) return;
+
+      // 總收入計算（全部資料）
+      const totalIncome = allData
+        .filter(d => d.type === 'income')
+        .reduce((acc, cur) => acc + cur.amount, 0);
+      totalIncomeEl.textContent = totalIncome.toFixed(2);
+
+      // 篩選當月資料
+      const [year, month] = selectedMonth.split('-');
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0); // 該月最後一天
+      const daysCount = endDate.getDate();
+
+      const monthData = allData.filter(item => {
+        const d = new Date(item.date);
+        return d >= startDate && d <= endDate;
+      });
+
+      // 當月收入和支出
+      const monthIncome = monthData
+        .filter(d => d.type === 'income')
+        .reduce((acc, cur) => acc + cur.amount, 0);
+      const monthExpense = monthData
+        .filter(d => d.type === 'expense')
+        .reduce((acc, cur) => acc + cur.amount, 0);
+
+      monthIncomeEl.textContent = monthIncome.toFixed(2);
+      monthExpenseEl.textContent = monthExpense.toFixed(2);
+
+      // 初始化每天收入、支出為0
+      const dailyIncome = {};
+      const dailyExpense = {};
+      for(let d=1; d<=daysCount; d++) {
+        const dayStr = `${year}-${month.padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        dailyIncome[dayStr] = 0;
+        dailyExpense[dayStr] = 0;
+      }
+
+      // 填入當日資料
+      monthData.forEach(item => {
+        if(item.type === 'income') dailyIncome[item.date] += item.amount;
+        else if(item.type === 'expense') dailyExpense[item.date] += item.amount;
+      });
+
+      // 計算收入累積
+      const incomeCumulative = [];
+      let cumulativeSum = 0;
+      for(let d=1; d<=daysCount; d++) {
+        const dayStr = `${year}-${month.padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        cumulativeSum += dailyIncome[dayStr];
+        incomeCumulative.push(cumulativeSum);
+      }
+
+      // 繪製圖表
+      const labels = [];
+      for(let d=1; d<=daysCount; d++) {
+        labels.push(String(d));
+      }
+
+      const data = {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: '每日收入',
+            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+            data: Object.values(dailyIncome),
+            yAxisID: 'y',
+          },
+          {
+            type: 'bar',
+            label: '每日支出',
+            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+            data: Object.values(dailyExpense),
+            yAxisID: 'y',
+          },
+          {
+            type: 'line',
+            label: '收入累積',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.3)',
+            data: incomeCumulative,
+            yAxisID: 'y1',
+            tension: 0.3,
+            fill: false,
+            pointRadius: 3,
+          }
+        ]
+      };
+
+      const options = {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        stacked: false,
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: { display: true, text: '金額 (元)' },
+            beginAtZero: true,
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: '收入累積 (元)' },
+            beginAtZero: true,
+          }
+        }
+      };
+
+      if(chart) {
+        chart.destroy();
+      }
+      chart = new Chart(ctx, {
+        data,
+        options
+      });
+    }
+
+    // 初始載入
+    (async () => {
+      await loadData();
+      renderChart();
+    })();
 
   </script>
 </body>
