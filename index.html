@@ -1,43 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>登入 - 記帳系統</title>
-</head>
-<body>
-  <h2>登入</h2>
-  <input type="email" id="email" placeholder="Email" required /><br>
-  <input type="password" id="password" placeholder="密碼" required /><br>
-  <button id="loginBtn">登入</button>
-  <p id="message"></p>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
+  <meta charset="UTF-8">
+  <title>登入 / 註冊</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <script>
+    // ✅ 替換成你的 Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
       authDomain: "project-1743045136631756226.firebaseapp.com",
       projectId: "project-1743045136631756226",
       storageBucket: "project-1743045136631756226.appspot.com",
       messagingSenderId: "660576126542",
-      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
-      measurementId: "G-31VC1RK1HK"
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        window.location.href = "home.html";
-      } catch (error) {
-        document.getElementById("message").textContent = "❌ 登入失敗：" + error.message;
-      }
-    });
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          window.location.href = "home.html";
+        })
+        .catch(error => {
+          alert("登入失敗：" + error.message);
+        });
+    }
+
+    function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => {
+          alert("註冊成功，自動登入中...");
+          window.location.href = "home.html";
+        })
+        .catch(error => {
+          alert("註冊失敗：" + error.message);
+        });
+    }
   </script>
+</head>
+<body>
+  <h2>登入 / 註冊</h2>
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="密碼"><br><br>
+  <button onclick="login()">登入</button>
+  <button onclick="register()">註冊</button>
 </body>
 </html>
