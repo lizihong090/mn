@@ -1,58 +1,167 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>登入 / 註冊</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <meta charset="UTF-8" />
+  <title>記帳系統</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 30px auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+    select, input, button { margin: 5px; padding: 6px; }
+    #chart { max-height: 300px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <h2>記帳系統</h2>
+
+  <label for="monthPicker">選擇月份：</label>
+  <select id="monthPicker"></select>
+
+  <table>
+    <thead>
+      <tr>
+        <th>日期</th>
+        <th>類型</th>
+        <th>金額</th>
+        <th>備註</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="recordsTableBody"></tbody>
+  </table>
+
+  <canvas id="chart"></canvas>
+
   <script>
-    // ✅ 替換成你的 Firebase 設定
+    // Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
       authDomain: "project-1743045136631756226.firebaseapp.com",
       projectId: "project-1743045136631756226",
       storageBucket: "project-1743045136631756226.appspot.com",
       messagingSenderId: "660576126542",
-      appId: "1:660576126542:web:ff0f574ec65385b7fa251f"
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+      measurementId: "G-31VC1RK1HK"
     };
-
-    // 初始化 Firebase
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+    const monthPicker = document.getElementById("monthPicker");
+    const recordsTableBody = document.getElementById("recordsTableBody");
+    let allData = [];
+    let chartInstance;
 
-      auth.signInWithEmailAndPassword(email, password)
-        .then(() => {
-          window.location.href = "home.html";
-        })
-        .catch(error => {
-          alert("登入失敗：" + error.message);
-        });
+    async function loadData() {
+      const snapshot = await db.collection("records").get();
+      allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
-    function register() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(() => {
-          alert("註冊成功，自動登入中...");
-          window.location.href = "home.html";
-        })
-        .catch(error => {
-          alert("註冊失敗：" + error.message);
-        });
+    function renderMonthOptions() {
+      const months = [...new Set(allData.map(item => item.date.slice(0, 7)))].sort().reverse();
+      monthPicker.innerHTML = "";
+      months.forEach(month => {
+        const option = document.createElement("option");
+        option.value = month;
+        option.textContent = month;
+        monthPicker.appendChild(option);
+      });
     }
+
+    function renderTable() {
+      const selectedMonth = monthPicker.value;
+      if (!selectedMonth) return;
+
+      const filteredData = allData.filter(item => item.date.startsWith(selectedMonth));
+      recordsTableBody.innerHTML = "";
+
+      if (filteredData.length === 0) {
+        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此月份的記錄</td></tr>`;
+        return;
+      }
+
+      filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      filteredData.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.date}</td>
+          <td>${item.type === "income" ? "收入" : "支出"}</td>
+          <td>${item.amount.toFixed(2)}</td>
+          <td>${item.note || ""}</td>
+          <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
+        `;
+        recordsTableBody.appendChild(tr);
+      });
+
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async e => {
+          const id = e.target.dataset.id;
+          if (confirm("確定要刪除這筆記錄嗎？")) {
+            try {
+              await db.collection("records").doc(id).delete();
+              alert("✅ 已刪除");
+              await loadData();
+              renderMonthOptions();
+              renderTable();
+              renderChart();
+            } catch (err) {
+              alert("❌ 刪除失敗：" + err.message);
+              console.error(err);
+            }
+          }
+        });
+      });
+    }
+
+    function renderChart() {
+      const selectedMonth = monthPicker.value;
+      if (!selectedMonth) return;
+
+      const filteredData = allData.filter(item => item.date.startsWith(selectedMonth));
+      const income = filteredData.filter(i => i.type === "income").reduce((sum, i) => sum + i.amount, 0);
+      const expense = filteredData.filter(i => i.type === "expense").reduce((sum, i) => sum + i.amount, 0);
+
+      const ctx = document.getElementById("chart").getContext("2d");
+
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["收入", "支出"],
+          datasets: [{
+            label: "金額",
+            data: [income, expense],
+            backgroundColor: ["#4caf50", "#f44336"]
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    monthPicker.addEventListener("change", () => {
+      renderTable();
+      renderChart();
+    });
+
+    async function init() {
+      await loadData();
+      renderMonthOptions();
+      renderTable();
+      renderChart();
+    }
+
+    init();
   </script>
-</head>
-<body>
-  <h2>登入 / 註冊</h2>
-  <input type="email" id="email" placeholder="Email"><br><br>
-  <input type="password" id="password" placeholder="密碼"><br><br>
-  <button onclick="login()">登入</button>
-  <button onclick="register()">註冊</button>
 </body>
 </html>
