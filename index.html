@@ -5,24 +5,6 @@
   <title>記帳與收入累積圖表（含刪除）</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-  body {
-      font-family: Arial, sans-serif;
-      padding: 40px;
-      text-align: center;
-    }
-    button {
-      font-size: 18px;
-      padding: 10px 25px;
-      cursor: pointer;
-      background-color: #1976d2;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      transition: background-color 0.3s ease;
-    }
-    button:hover {
-      background-color: #115293;
-    }
     table {
       border-collapse: collapse;
       width: 100%;
@@ -397,6 +379,13 @@
         options
       });
     }
+    <button id="addBtn">添加</button>
+
+  <script>
+    document.getElementById("addBtn").addEventListener("click", function() {
+      window.location.href = "material.html";
+    });
+  </script>
   </script>
 </body>
 </html>
