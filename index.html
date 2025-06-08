@@ -2,114 +2,372 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>記帳與收入累積圖表（含刪除）</title>
-  <!-- 引入Chart.js圖表庫 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>财务管理系统 - 图表分析</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* 表格樣式設定 */
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      max-width: 800px;
-      margin-top: 10px;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    th, td {
-      border: 1px solid #aaa;
-      padding: 6px 8px;
+    
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e7f1 100%);
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
       text-align: center;
-    }
-    th {
-      background-color: #f0f0f0; /* 表頭背景色 */
-    }
-    /* 刪除按鈕樣式 */
-    button.delete-btn {
-      background-color: #e74c3c; /* 紅色背景 */
-      border: none;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(120deg, #4b6cb7 0%, #182848 100%);
+      border-radius: 15px;
       color: white;
-      padding: 5px 10px;
-      cursor: pointer;
-      border-radius: 3px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
     }
-    button.delete-btn:hover {
-      background-color: #c0392b; /* 滑鼠懸停時加深紅色 */
+    
+    header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+      transition: transform 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+    
+    .card-title {
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+    }
+    
+    .card-title i {
+      margin-right: 10px;
+      color: #4b6cb7;
+    }
+    
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #2c3e50;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4b6cb7;
+      box-shadow: 0 0 0 3px rgba(75, 108, 183, 0.2);
+    }
+    
+    button {
+      background: linear-gradient(120deg, #4b6cb7 0%, #182848 100%);
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(75, 108, 183, 0.4);
+    }
+    
+    button i {
+      margin-right: 8px;
+    }
+    
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stat-title {
+      font-size: 1rem;
+      color: #7f8c8d;
+      margin-bottom: 10px;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    
+    .income .stat-value {
+      color: #27ae60;
+    }
+    
+    .expense .stat-value {
+      color: #e74c3c;
+    }
+    
+    .net .stat-value {
+      color: #3498db;
+    }
+    
+    .chart-container {
+      height: 400px;
+      position: relative;
+      margin: 20px 0;
+    }
+    
+    .charts-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .chart-wrapper {
+      flex: 1;
+      min-width: 300px;
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .month-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .month-controls h2 {
+      font-size: 1.8rem;
+      color: #2c3e50;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn-group button {
+      padding: 10px 20px;
+    }
+    
+    .summary {
+      text-align: center;
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #4b6cb7;
+    }
+    
+    .summary p {
+      font-size: 1.1rem;
+      color: #2c3e50;
+    }
+    
+    .summary .highlight {
+      font-weight: 700;
+      color: #e74c3c;
+    }
+    
+    @media (max-width: 768px) {
+      .form-row {
+        flex-direction: column;
+      }
+      
+      .charts-row {
+        flex-direction: column;
+      }
+      
+      .month-controls {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+      }
+      
+      .btn-group {
+        width: 100%;
+        justify-content: center;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- 主標題 -->
-  <h2>記帳系統</h2>
-
-  <!-- 表單區域 -->
-  <form id="form">
-    <label>日期：
-      <input type="date" id="date" required /> <!-- 日期選擇 -->
-    </label>
-    <label>類型：
-      <select id="type" required>
-        <option value="">請選擇</option>
-        <option value="income">收入</option>
-        <option value="expense">支出</option>
-      </select>
-    </label>
-    <label>金額：
-      <input type="number" id="amount" step="0.01" required /> <!-- 允許小數輸入 -->
-    </label>
-    <label>備註：
-      <input type="text" id="note" /> <!-- 備註輸入 -->
-    </label>
-    <button type="submit">新增記錄</button> <!-- 提交按鈕 -->
-  </form>
-
-  <hr /> <!-- 分隔線 -->
-
-  <!-- 月份選擇器 -->
-  <label>選擇月份：
-    <input type="month" id="monthPicker" />
-  </label>
-
-  <!-- 統計資訊顯示區 -->
-  <div>
-    <p>全部總收入：<span id="totalIncome">0</span> 元</p>
-    <p>當月收入：<span id="monthIncome">0</span> 元</p>
-    <p>當月支出：<span id="monthExpense">0</span> 元</p>
+  <div class="container">
+    <header>
+      <h1><i class="fas fa-chart-line"></i> 财务管理系统</h1>
+      <p>数据驱动的财务分析与可视化工具</p>
+    </header>
+    
+    <div class="card">
+      <h2 class="card-title"><i class="fas fa-plus-circle"></i> 添加新记录</h2>
+      <form id="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="date">日期</label>
+            <input type="date" id="date" required />
+          </div>
+          
+          <div class="form-group">
+            <label for="type">类型</label>
+            <select id="type" required>
+              <option value="">请选择</option>
+              <option value="income">收入</option>
+              <option value="expense">支出</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="amount">金额 (¥)</label>
+            <input type="number" id="amount" step="0.01" required />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label for="note">备注</label>
+            <input type="text" id="note" placeholder="输入交易备注..." />
+          </div>
+          
+          <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button type="submit"><i class="fas fa-save"></i> 保存记录</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <div class="month-controls">
+      <h2><i class="fas fa-calendar-alt"></i> 财务分析面板</h2>
+      <div>
+        <label>选择月份：</label>
+        <input type="month" id="monthPicker" />
+      </div>
+    </div>
+    
+    <div class="stats-container">
+      <div class="stat-card income">
+        <div class="stat-title">总收入</div>
+        <div class="stat-value">¥<span id="totalIncome">0</span></div>
+      </div>
+      
+      <div class="stat-card income">
+        <div class="stat-title">当月收入</div>
+        <div class="stat-value">¥<span id="monthIncome">0</span></div>
+      </div>
+      
+      <div class="stat-card expense">
+        <div class="stat-title">当月支出</div>
+        <div class="stat-value">¥<span id="monthExpense">0</span></div>
+      </div>
+      
+      <div class="stat-card net">
+        <div class="stat-title">当月结余</div>
+        <div class="stat-value">¥<span id="monthBalance">0</span></div>
+      </div>
+    </div>
+    
+    <div class="summary">
+      <p>当前月份财务健康度: <span class="highlight">良好</span> | 支出占收入比例: <span id="expenseRatio">0%</span></p>
+    </div>
+    
+    <div class="charts-row">
+      <div class="chart-wrapper">
+        <h3><i class="fas fa-chart-bar"></i> 每日收支趋势</h3>
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+      
+      <div class="chart-wrapper">
+        <h3><i class="fas fa-chart-pie"></i> 收支类型分布</h3>
+        <div class="chart-container">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 class="card-title"><i class="fas fa-chart-area"></i> 月度收入累积分析</h2>
+      <div class="chart-container">
+        <canvas id="cumulativeChart"></canvas>
+      </div>
+    </div>
   </div>
 
-  <!-- 圖表容器 -->
-  <canvas id="chart" width="800" height="400"></canvas>
-
-  <!-- 記錄表格 -->
-  <h3>所有記錄</h3>
-  <table id="recordsTable">
-    <thead>
-      <tr>
-        <th>日期</th>
-        <th>類型</th>
-        <th>金額</th>
-        <th>備註</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- 動態生成記錄區域 -->
-    </tbody>
-  </table>
-
-   <!-- 跳轉按鈕 -->
-   <button id="addBtn">添加</button>
-
   <script type="module">
-    // 導入Firebase模組
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
-      addDoc, 
-      getDocs, 
-      deleteDoc, 
-      doc 
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // Firebase配置設定
+    // Firebase配置
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
       authDomain: "project-1743045136631756226.firebaseapp.com",
@@ -120,318 +378,393 @@
       measurementId: "G-31VC1RK1HK"
     };
 
-    // 初始化Firebase應用
+    // 初始化Firebase应用
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);  // 獲取Firestore實例
-    const colRef = collection(db, "records");  // 指向'records'集合
+    const db = getFirestore(app);
+    const colRef = collection(db, "records");
 
-    // DOM元素獲取
+    // 获取DOM元素
     const form = document.getElementById("form");
     const monthPicker = document.getElementById("monthPicker");
     const totalIncomeEl = document.getElementById("totalIncome");
     const monthIncomeEl = document.getElementById("monthIncome");
     const monthExpenseEl = document.getElementById("monthExpense");
-    const ctx = document.getElementById("chart").getContext('2d');  // 圖表繪製上下文
-    const recordsTableBody = document.querySelector("#recordsTable tbody");
-    const addBtn = document.getElementById("addBtn");
+    const monthBalanceEl = document.getElementById("monthBalance");
+    const expenseRatioEl = document.getElementById("expenseRatio");
+    
+    // 图表上下文
+    const trendCtx = document.getElementById("trendChart").getContext('2d');
+    const distributionCtx = document.getElementById("distributionChart").getContext('2d');
+    const cumulativeCtx = document.getElementById("cumulativeChart").getContext('2d');
 
-    let allData = [];  // 儲存所有記帳記錄
-    let chart;  // Chart.js實例
+    let allData = [];
+    let trendChart, distributionChart, cumulativeChart;
 
-    // 設定月份選擇器預設值為當前月份
+    // 设置默认月份为当前月
     const today = new Date();
     monthPicker.value = today.toISOString().slice(0,7);
 
-    // 表單提交事件處理
+    // 表单提交事件
     form.addEventListener("submit", async e => {
-      e.preventDefault();  // 阻止表單默認提交行為
+      e.preventDefault();
 
-      // 獲取表單數據
       const type = document.getElementById("type").value;
       const amount = parseFloat(document.getElementById("amount").value);
       const note = document.getElementById("note").value;
       const date = document.getElementById("date").value;
 
-      // 驗證必填欄位
       if (!date || !amount || !type) {
-        alert("請完整填寫必填欄位");
+        alert("请完整填写必填字段");
         return;
       }
 
       try {
-        // 新增記錄到Firestore
         await addDoc(colRef, { type, amount, note, date });
-        alert("✅ 成功新增！");
-        form.reset();  // 重置表單
-        // 重新加載數據並更新UI
+        alert("✅ 记录添加成功！");
+        form.reset();
         await loadData();
-        renderTable();
-        renderChart();
+        renderCharts();
       } catch (err) {
-        alert("❌ 新增失敗：" + err.message);
+        alert("❌ 添加失败：" + err.message);
         console.error(err);
       }
     });
 
-    // 加載所有記帳數據
+    // 加载数据
     async function loadData() {
-      allData = [];  // 清空現有數據
-      // 從Firestore獲取所有文檔
+      allData = [];
       const snapshot = await getDocs(colRef);
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        // 將文檔數據存入allData數組
         allData.push({
-          id: docSnap.id,  // 保留文檔ID以便後續操作
+          id: docSnap.id,
           ...data,
-          amount: Number(data.amount),  // 確保金額為數字類型
-          date: data.date  // yyyy-mm-dd格式日期字符串
+          amount: Number(data.amount),
+          date: data.date
         });
       });
     }
 
-    // 渲染記錄表格
-    function renderTable() {
-      recordsTableBody.innerHTML = "";  // 清空表格內容
-      // 若無數據顯示提示信息
-      if(allData.length === 0){
-        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無任何記錄</td></tr>`;
-        return;
-      }
-      // 按日期降序排序（最新在最前）
-      allData.sort((a,b) => new Date(b.date) - new Date(a.date));
-
-      // 生成表格行
-      allData.forEach(item => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${item.date}</td>
-          <td>${item.type === "income" ? "收入" : "支出"}</td>
-          <td>${item.amount.toFixed(2)}</td>  <!-- 金額顯示兩位小數 -->
-          <td>${item.note || ""}</td>  <!-- 備註為空時顯示空字符串 -->
-          <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
-        `;
-        recordsTableBody.appendChild(tr);
-      });
-
-      // 為所有刪除按鈕添加事件監聽器
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async e => {
-          const id = e.target.dataset.id;  // 獲取記錄ID
-          if(confirm("確定要刪除這筆記錄嗎？")) {
-            try {
-              // 從Firestore刪除文檔
-              await deleteDoc(doc(db, "records", id));
-              alert("✅ 已刪除");
-              // 更新數據和UI
-              await loadData();
-              renderTable();
-              renderChart();
-            } catch (err) {
-              alert("❌ 刪除失敗：" + err.message);
-              console.error(err);
-            }
-          }
-        });
-      });
-    }
-
-    // 月份選擇變化事件
+    // 月份选择事件
     monthPicker.addEventListener("change", () => {
-      renderChart();  // 重新渲染圖表
+      renderCharts();
     });
 
-    // 跳轉按鈕事件
-    addBtn.addEventListener("click", () => {
-      window.location.href = "material.html";  // 跳轉到其他頁面
-    });
-
-    // 頁面初始化時執行
+    // 页面初始化
     (async function init() {
-      await loadData();  // 加載數據
-      renderTable();     // 渲染表格
-      renderChart();     // 繪製圖表
+      await loadData();
+      renderCharts();
     })();
 
-    // 渲染圖表函數
-    function renderChart() {
-      // 若無數據則清除現有圖表
+    // 渲染所有图表
+    function renderCharts() {
+      renderTrendChart();
+      renderDistributionChart();
+      renderCumulativeChart();
+      updateFinancialSummary();
+    }
+
+    // 更新财务摘要信息
+    function updateFinancialSummary() {
       if (!allData.length) {
-        if(chart) chart.destroy();
-        // 重置統計數據顯示
         totalIncomeEl.textContent = "0";
         monthIncomeEl.textContent = "0";
         monthExpenseEl.textContent = "0";
+        monthBalanceEl.textContent = "0";
+        expenseRatioEl.textContent = "0%";
         return;
       }
 
-      const selectedMonth = monthPicker.value;  // 獲取選中的月份（yyyy-mm格式）
+      // 计算总收入
+      const totalIncome = allData
+        .filter(d => d.type === 'income')
+        .reduce((acc, cur) => acc + cur.amount, 0);
+      totalIncomeEl.textContent = totalIncome.toFixed(2);
+
+      const selectedMonth = monthPicker.value;
       if (!selectedMonth) return;
 
-      // 解析年份和月份
       const [year, month] = selectedMonth.split('-');
       const selectedYear = parseInt(year);
       const selectedMonthNum = parseInt(month);
 
-      // 篩選當前年份數據（用於累積計算）
-      const yearData = allData.filter(item => {
-        const d = new Date(item.date);
-        return d.getFullYear() === selectedYear;
-      });
-
-      // 計算當月天數
-      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
-      const daysCount = monthEndDate.getDate();
-
-      // 篩選當月數據
+      // 筛选当月数据
       const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
+      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+
       const monthData = allData.filter(item => {
         const d = new Date(item.date);
         return d >= monthStartDate && d <= monthEndDate;
       });
 
-      // 計算全部總收入
-      const totalIncome = allData
-        .filter(d => d.type === 'income')
-        .reduce((acc, cur) => acc + cur.amount, 0);
-      totalIncomeEl.textContent = totalIncome.toFixed(2);  // 顯示兩位小數
-
-      // 計算當月收入和支出
+      // 计算当月收入和支出
       const monthIncome = monthData
         .filter(d => d.type === 'income')
         .reduce((acc, cur) => acc + cur.amount, 0);
       const monthExpense = monthData
         .filter(d => d.type === 'expense')
         .reduce((acc, cur) => acc + cur.amount, 0);
+      const monthBalance = monthIncome - monthExpense;
+      const ratio = monthIncome > 0 ? (monthExpense / monthIncome * 100).toFixed(1) : 0;
 
       monthIncomeEl.textContent = monthIncome.toFixed(2);
       monthExpenseEl.textContent = monthExpense.toFixed(2);
+      monthBalanceEl.textContent = monthBalance.toFixed(2);
+      expenseRatioEl.textContent = `${ratio}%`;
+    }
 
-      // 初始化每日收入支出物件
-      const dailyIncome = {};
-      const dailyExpense = {};
-      // 初始化當月每日數據
-      for(let d=1; d<=daysCount; d++) {
-        const dayStr = `${year}-${month.padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        dailyIncome[dayStr] = 0;
-        dailyExpense[dayStr] = 0;
+    // 渲染趋势图
+    function renderTrendChart() {
+      if (trendChart) trendChart.destroy();
+      
+      if (!allData.length) {
+        trendChart = new Chart(trendCtx, {
+          type: 'bar',
+          data: { datasets: [] },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
       }
 
-      // 填充每日實際數據
-      monthData.forEach(item => {
-        if(item.type === 'income') dailyIncome[item.date] += item.amount;
-        else if(item.type === 'expense') dailyExpense[item.date] += item.amount;
+      const selectedMonth = monthPicker.value;
+      if (!selectedMonth) return;
+
+      const [year, month] = selectedMonth.split('-');
+      const selectedYear = parseInt(year);
+      const selectedMonthNum = parseInt(month);
+
+      // 筛选当月数据
+      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
+      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+      const daysCount = monthEndDate.getDate();
+
+      const monthData = allData.filter(item => {
+        const d = new Date(item.date);
+        return d >= monthStartDate && d <= monthEndDate;
       });
 
-      // 計算收入累積（從當年1月1日開始）
-      const incomeCumulative = [];
+      // 初始化每日数据
+      const dailyIncome = Array(daysCount).fill(0);
+      const dailyExpense = Array(daysCount).fill(0);
+
+      monthData.forEach(item => {
+        const day = new Date(item.date).getDate() - 1;
+        if (item.type === 'income') dailyIncome[day] += item.amount;
+        else if (item.type === 'expense') dailyExpense[day] += item.amount;
+      });
+
+      // 生成标签 (1, 2, 3, ...)
+      const labels = Array.from({length: daysCount}, (_, i) => i + 1);
+
+      // 创建趋势图表
+      trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '每日收入',
+              data: dailyIncome,
+              borderColor: '#27ae60',
+              backgroundColor: 'rgba(39, 174, 96, 0.1)',
+              borderWidth: 3,
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: '每日支出',
+              data: dailyExpense,
+              borderColor: '#e74c3c',
+              backgroundColor: 'rgba(231, 76, 60, 0.1)',
+              borderWidth: 3,
+              tension: 0.3,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: '每日收支趋势'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '金额 (¥)'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: '日期'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 渲染分布图
+    function renderDistributionChart() {
+      if (distributionChart) distributionChart.destroy();
+      
+      if (!allData.length) {
+        distributionChart = new Chart(distributionCtx, {
+          type: 'doughnut',
+          data: { datasets: [] },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+      }
+
+      const selectedMonth = monthPicker.value;
+      if (!selectedMonth) return;
+
+      const [year, month] = selectedMonth.split('-');
+      const selectedYear = parseInt(year);
+      const selectedMonthNum = parseInt(month);
+
+      // 筛选当月数据
+      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
+      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+
+      const monthData = allData.filter(item => {
+        const d = new Date(item.date);
+        return d >= monthStartDate && d <= monthEndDate;
+      });
+
+      // 计算收入分类
+      const incomeData = monthData.filter(d => d.type === 'income');
+      const expenseData = monthData.filter(d => d.type === 'expense');
+
+      // 创建分布图表
+      distributionChart = new Chart(distributionCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['收入', '支出'],
+          datasets: [{
+            data: [
+              incomeData.reduce((acc, cur) => acc + cur.amount, 0),
+              expenseData.reduce((acc, cur) => acc + cur.amount, 0)
+            ],
+            backgroundColor: ['#27ae60', '#e74c3c'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ¥${context.raw.toFixed(2)}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 渲染累积图
+    function renderCumulativeChart() {
+      if (cumulativeChart) cumulativeChart.destroy();
+      
+      if (!allData.length) {
+        cumulativeChart = new Chart(cumulativeCtx, {
+          type: 'line',
+          data: { datasets: [] },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+      }
+
+      const selectedMonth = monthPicker.value;
+      if (!selectedMonth) return;
+
+      const [year, month] = selectedMonth.split('-');
+      const selectedYear = parseInt(year);
+      const selectedMonthNum = parseInt(month);
+
+      // 筛选当月数据
+      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
+      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+      const daysCount = monthEndDate.getDate();
+
+      // 筛选当月收入数据
+      const monthData = allData.filter(item => {
+        const d = new Date(item.date);
+        return d >= monthStartDate && d <= monthEndDate && item.type === 'income';
+      });
+
+      // 初始化累积收入数组
+      const cumulativeIncome = Array(daysCount).fill(0);
       let cumulativeSum = 0;
 
-      // 生成從1月1日到當月最後一天的日期數組
-      const allDates = [];
-      for(let m=1; m<=selectedMonthNum; m++) {
-        const lastDay = new Date(selectedYear, m, 0).getDate();
-        for(let d=1; d<=lastDay; d++) {
-          allDates.push(`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
-        }
+      // 计算每日累积收入
+      for (let day = 1; day <= daysCount; day++) {
+        const dateStr = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = monthData.filter(item => item.date === dateStr);
+        const dayTotal = dayData.reduce((acc, cur) => acc + cur.amount, 0);
+        cumulativeSum += dayTotal;
+        cumulativeIncome[day - 1] = cumulativeSum;
       }
 
-      // 計算累積收入
-      allDates.forEach(dateStr => {
-        let dayIncome = 0;
-        const d = new Date(dateStr);
-        // 當月日期使用即時數據
-        if(d >= monthStartDate && d <= monthEndDate) {
-          dayIncome = dailyIncome[dateStr] || 0;
-        } 
-        // 非當月日期使用全年數據
-        else {
-          const dayData = yearData.filter(item => 
-            item.date === dateStr && item.type === 'income'
-          );
-          dayIncome = dayData.reduce((acc, cur) => acc + cur.amount, 0);
-        }
-        cumulativeSum += dayIncome;
+      // 生成标签 (1, 2, 3, ...)
+      const labels = Array.from({length: daysCount}, (_, i) => i + 1);
 
-        // 只記錄當月累積數據點
-        if(d >= monthStartDate && d <= monthEndDate) {
-          incomeCumulative.push(cumulativeSum);
-        }
-      });
-
-      // 生成當月日期標籤（1-31）
-      const labels = [];
-      for(let d=1; d<=daysCount; d++) {
-        labels.push(String(d));
-      }
-
-      // 圖表數據集配置
-      const data = {
-        labels,  // X軸標籤（日期）
-        datasets: [
-          {
-            type: 'bar',  // 柱狀圖
-            label: '每日收入',
-            backgroundColor: 'rgba(75, 192, 192, 0.7)',  // 青色
-            data: Object.values(dailyIncome),  // 每日收入數據
-            yAxisID: 'y',  // 使用左側Y軸
-          },
-          {
-            type: 'bar',
-            label: '每日支出',
-            backgroundColor: 'rgba(255, 99, 132, 0.7)',  // 紅色
-            data: Object.values(dailyExpense),
-            yAxisID: 'y',
-          },
-          {
-            type: 'line',  // 折線圖
-            label: '收入累積',
-            borderColor: 'rgba(54, 162, 235, 1)',  // 藍色
-            backgroundColor: 'rgba(54, 162, 235, 0.3)',
-            data: incomeCumulative,  // 累積收入數據
-            yAxisID: 'y1',  // 使用右側Y軸
-            tension: 0.3,  // 曲線平滑度
-            fill: false,  // 不填充區域
-            pointRadius: 3,  // 數據點大小
-          }
-        ]
-      };
-
-      // 圖表配置選項
-      const options = {
-        responsive: true,  // 響應式設計
-        interaction: {
-          mode: 'index',  // 交互模式
-          intersect: false,
+      // 创建累积图表
+      cumulativeChart = new Chart(cumulativeCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '收入累积',
+              data: cumulativeIncome,
+              borderColor: '#3498db',
+              backgroundColor: 'rgba(52, 152, 219, 0.1)',
+              borderWidth: 3,
+              tension: 0.3,
+              fill: true
+            }
+          ]
         },
-        stacked: false,  // 不堆疊柱狀圖
-        scales: {
-          y: {
-            type: 'linear',
-            display: true,
-            position: 'left',  // 左側Y軸
-            title: { display: true, text: '金額 (元)' },
-            beginAtZero: true,  // 從零開始
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: '月度收入累积趋势'
+            }
           },
-          y1: {
-            type: 'linear',
-            display: true,
-            position: 'right',  // 右側Y軸（累積收入）
-            grid: { drawOnChartArea: false },  // 不在圖表區繪製網格線
-            title: { display: true, text: '收入累積 (元)' },
-            beginAtZero: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '累积金额 (¥)'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: '日期'
+              }
+            }
           }
         }
-      };
-
-      // 若已有圖表實例則先銷毀
-      if(chart) {
-        chart.destroy();
-      }
-      // 創建新圖表
-      chart = new Chart(ctx, {
-        data,
-        options
       });
     }
   </script>
