@@ -2,58 +2,42 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>Firebase 記帳系統</title>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js" type="module"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; }
-    .hidden { display: none; }
-    form > * { margin: 5px 0; }
-  </style>
+  <title>登入</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_DOMAIN.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    document.getElementById("loginBtn").onclick = () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => location.href = "main.html")
+        .catch(e => alert("登入失敗：" + e.message));
+    };
+
+    document.getElementById("signupBtn").onclick = () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(() => alert("註冊成功，請重新登入"))
+        .catch(e => alert("註冊失敗：" + e.message));
+    };
+  </script>
 </head>
 <body>
-
-  <!-- 登入頁面 -->
-  <div id="loginPage">
-    <h2>登入帳號</h2>
-    <input id="email" type="email" placeholder="Email" required><br>
-    <input id="password" type="password" placeholder="Password" required><br>
-    <button id="loginBtn">登入</button>
-    <button id="signupBtn">註冊</button>
-    <p id="loginMessage"></p>
-  </div>
-
-  <!-- 主頁（記帳頁面） -->
-  <div id="mainPage" class="hidden">
-    <button id="logoutBtn">登出</button>
-    <h2>記帳系統</h2>
-
-    <form id="form">
-      <select id="type" required>
-        <option value="income">收入</option>
-        <option value="expense">支出</option>
-      </select><br />
-      <input id="amount" type="number" placeholder="金額" required /><br />
-      <input id="note" type="text" placeholder="備註" /><br />
-      <input id="date" type="date" required /><br />
-      <button type="submit">新增</button>
-    </form>
-
-    <hr />
-    <label for="monthPicker">選擇月份：</label>
-    <input type="month" id="monthPicker" />
-
-    <h3>統計資料</h3>
-    <p>總收入：<span id="totalIncome">0</span> 元</p>
-    <p>當月總收入：<span id="monthIncome">0</span> 元</p>
-    <p>當月總支出：<span id="monthExpense">0</span> 元</p>
-
-    <canvas id="chart" width="700" height="350"></canvas>
-  </div>
-
-  <!-- 功能邏輯 -->
-  <script type="module" src="main.js"></script>
+  <h2>登入頁面</h2>
+  <input id="email" type="email" placeholder="Email" /><br />
+  <input id="password" type="password" placeholder="Password" /><br />
+  <button id="loginBtn">登入</button>
+  <button id="signupBtn">註冊</button>
 </body>
 </html>
