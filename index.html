@@ -58,7 +58,7 @@
   <hr />
 
   <label>選擇月份：
-    <input type="month" id="monthPicker" />
+    <select id="monthPicker"></select>
   </label>
 
   <div>
@@ -115,11 +115,6 @@
     let allData = [];
     let chart;
 
-    // 預設選擇當月
-    const today = new Date();
-    monthPicker.value = today.toISOString().slice(0,7);
-
-    // 新增記錄
     form.addEventListener("submit", async e => {
       e.preventDefault();
 
@@ -138,6 +133,7 @@
         alert("✅ 成功新增！");
         form.reset();
         await loadData();
+        renderMonthOptions();
         renderTable();
         renderChart();
       } catch (err) {
@@ -146,29 +142,53 @@
       }
     });
 
-    // 載入所有資料
     async function loadData() {
       allData = [];
       const snapshot = await getDocs(colRef);
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
         allData.push({
-          id: docSnap.id,  // 保留 id 以便刪除
+          id: docSnap.id,
           ...data,
           amount: Number(data.amount),
-          date: data.date // yyyy-mm-dd 字串
+          date: data.date
         });
       });
     }
 
-    // 渲染資料表
+    function renderMonthOptions() {
+      const uniqueMonths = new Set();
+
+      allData.forEach(item => {
+        if (item.date) {
+          const monthStr = item.date.slice(0, 7); // yyyy-mm
+          uniqueMonths.add(monthStr);
+        }
+      });
+
+      const sortedMonths = Array.from(uniqueMonths).sort().reverse(); // 最新在上
+
+      monthPicker.innerHTML = "";
+      sortedMonths.forEach(month => {
+        const option = document.createElement("option");
+        option.value = month;
+        option.textContent = month;
+        monthPicker.appendChild(option);
+      });
+
+      if (sortedMonths.length > 0) {
+        monthPicker.value = sortedMonths[0];
+      }
+    }
+
     function renderTable() {
       recordsTableBody.innerHTML = "";
-      if(allData.length === 0){
+      if (allData.length === 0) {
         recordsTableBody.innerHTML = `<tr><td colspan="5">目前無任何記錄</td></tr>`;
         return;
       }
-      allData.sort((a,b) => new Date(b.date) - new Date(a.date)); // 日期由新到舊
+
+      allData.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       allData.forEach(item => {
         const tr = document.createElement("tr");
@@ -182,15 +202,15 @@
         recordsTableBody.appendChild(tr);
       });
 
-      // 加事件監聽器給刪除按鈕
       document.querySelectorAll(".delete-btn").forEach(btn => {
         btn.addEventListener("click", async e => {
           const id = e.target.dataset.id;
-          if(confirm("確定要刪除這筆記錄嗎？")) {
+          if (confirm("確定要刪除這筆記錄嗎？")) {
             try {
               await deleteDoc(doc(db, "records", id));
               alert("✅ 已刪除");
               await loadData();
+              renderMonthOptions();
               renderTable();
               renderChart();
             } catch (err) {
@@ -202,115 +222,88 @@
       });
     }
 
-    // 月份選擇事件
-    monthPicker.addEventListener("change", () => {
-      renderChart();
-    });
-
-    // 頁面初始載入
-    await loadData();
-    renderTable();
-    renderChart();
-
     function renderChart() {
       if (!allData.length) {
-        if(chart) chart.destroy();
+        if (chart) chart.destroy();
         totalIncomeEl.textContent = "0";
         monthIncomeEl.textContent = "0";
         monthExpenseEl.textContent = "0";
         return;
       }
 
-      const selectedMonth = monthPicker.value; // 格式 yyyy-mm
+      const selectedMonth = monthPicker.value;
       if (!selectedMonth) return;
 
       const [year, month] = selectedMonth.split('-');
       const selectedYear = parseInt(year);
       const selectedMonthNum = parseInt(month);
 
-      // 篩選該年度所有資料（方便累積計算）
       const yearData = allData.filter(item => {
         const d = new Date(item.date);
         return d.getFullYear() === selectedYear;
       });
 
-      // 該年度1月1日到當月最後一天日期範圍
-      const startDate = new Date(selectedYear, 0, 1); // 1月1日
-      const endDate = new Date(selectedYear, selectedMonthNum, 0); // 當月最後一天
+      const startDate = new Date(selectedYear, 0, 1);
+      const endDate = new Date(selectedYear, selectedMonthNum, 0);
       const daysCount = endDate.getDate();
 
-      // 當月資料篩選
-      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
-      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+      const monthStartDate = new Date(selectedYear, selectedMonthNum - 1, 1);
+      const monthEndDate = endDate;
 
       const monthData = allData.filter(item => {
         const d = new Date(item.date);
         return d >= monthStartDate && d <= monthEndDate;
       });
 
-      // 全部總收入
-      const totalIncome = allData
-        .filter(d => d.type === 'income')
-        .reduce((acc, cur) => acc + cur.amount, 0);
+      const totalIncome = allData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
       totalIncomeEl.textContent = totalIncome.toFixed(2);
 
-      // 當月收入與支出
-      const monthIncome = monthData
-        .filter(d => d.type === 'income')
-        .reduce((acc, cur) => acc + cur.amount, 0);
-      const monthExpense = monthData
-        .filter(d => d.type === 'expense')
-        .reduce((acc, cur) => acc + cur.amount, 0);
+      const monthIncome = monthData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
+      const monthExpense = monthData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
 
       monthIncomeEl.textContent = monthIncome.toFixed(2);
       monthExpenseEl.textContent = monthExpense.toFixed(2);
 
-      // 初始化當月每天收入與支出
       const dailyIncome = {};
       const dailyExpense = {};
-      for(let d=1; d<=daysCount; d++) {
-        const dayStr = `${year}-${month.padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      for (let d = 1; d <= daysCount; d++) {
+        const dayStr = `${year}-${month.padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         dailyIncome[dayStr] = 0;
         dailyExpense[dayStr] = 0;
       }
 
       monthData.forEach(item => {
-        if(item.type === 'income') dailyIncome[item.date] += item.amount;
-        else if(item.type === 'expense') dailyExpense[item.date] += item.amount;
+        if (item.type === 'income') dailyIncome[item.date] += item.amount;
+        else if (item.type === 'expense') dailyExpense[item.date] += item.amount;
       });
 
-      // 計算收入累積（從1月1日累積到當月最後一天）
       const incomeCumulative = [];
       let cumulativeSum = 0;
-
-      // 先建立該年1月1日至當月最後一天所有日期字串
       const allDates = [];
-      for(let m=1; m<=selectedMonthNum; m++) {
+      for (let m = 1; m <= selectedMonthNum; m++) {
         const lastDay = new Date(selectedYear, m, 0).getDate();
-        for(let d=1; d<=lastDay; d++) {
-          allDates.push(`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+        for (let d = 1; d <= lastDay; d++) {
+          allDates.push(`${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
         }
       }
 
       allDates.forEach(dateStr => {
         let dayIncome = 0;
         const d = new Date(dateStr);
-        if(d >= monthStartDate && d <= monthEndDate) {
+        if (d >= monthStartDate && d <= monthEndDate) {
           dayIncome = dailyIncome[dateStr] || 0;
         } else {
           const dayData = yearData.filter(item => item.date === dateStr && item.type === 'income');
           dayIncome = dayData.reduce((acc, cur) => acc + cur.amount, 0);
         }
         cumulativeSum += dayIncome;
-
-        if(d >= monthStartDate && d <= monthEndDate) {
+        if (d >= monthStartDate && d <= monthEndDate) {
           incomeCumulative.push(cumulativeSum);
         }
       });
 
-      // 繪製當月天數標籤
       const labels = [];
-      for(let d=1; d<=daysCount; d++) {
+      for (let d = 1; d <= daysCount; d++) {
         labels.push(String(d));
       }
 
@@ -371,14 +364,21 @@
         }
       };
 
-      if(chart) {
+      if (chart) {
         chart.destroy();
       }
-      chart = new Chart(ctx, {
-        data,
-        options
-      });
+      chart = new Chart(ctx, { data, options });
     }
+
+    monthPicker.addEventListener("change", () => {
+      renderChart();
+    });
+
+    // 初始化
+    await loadData();
+    renderMonthOptions();
+    renderTable();
+    renderChart();
   </script>
 </body>
 </html>
