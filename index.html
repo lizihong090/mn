@@ -13,17 +13,10 @@
     th { background-color: #f2f2f2; }
     select, input, button { margin: 5px; padding: 6px; }
     #chart { max-height: 300px; margin-top: 30px; }
-    #cancelDisplayBtn { background-color: #e91e63; color: white; border: none; cursor: pointer; }
-    #cancelDisplayBtn:hover { background-color: #c2185b; }
   </style>
 </head>
 <body>
   <h2>記帳系統</h2>
-  
-  <!-- 新增取消按鈕 -->
-  <button id="cancelDisplayBtn">取消所有紀錄並前往 Material 頁面</button>
-
-  <br>
 
   <label for="monthPicker">選擇月份：</label>
   <select id="monthPicker"></select>
@@ -159,20 +152,6 @@
     monthPicker.addEventListener("change", () => {
       renderTable();
       renderChart();
-    });
-
-    // ✅ 取消按鈕功能：清空頁面資料並跳轉
-    document.getElementById("cancelDisplayBtn").addEventListener("click", () => {
-      if (!confirm("確定要清空頁面上的所有紀錄並前往 material.html？")) return;
-
-      recordsTableBody.innerHTML = `<tr><td colspan="5">紀錄已清除</td></tr>`;
-
-      if (chartInstance) {
-        chartInstance.destroy();
-        chartInstance = null;
-      }
-
-      window.location.href = "material.html";
     });
 
     async function init() {
