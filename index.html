@@ -2,42 +2,42 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>登入</title>
+  <title>登入 - 記帳系統</title>
+</head>
+<body>
+  <h2>登入</h2>
+  <input type="email" id="email" placeholder="Email" required /><br>
+  <input type="password" id="password" placeholder="密碼" required /><br>
+  <button id="loginBtn">登入</button>
+  <p id="message"></p>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_DOMAIN.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID"
+      apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
+      authDomain: "project-1743045136631756226.firebaseapp.com",
+      projectId: "project-1743045136631756226",
+      storageBucket: "project-1743045136631756226.appspot.com",
+      messagingSenderId: "660576126542",
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+      measurementId: "G-31VC1RK1HK"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    document.getElementById("loginBtn").onclick = () => {
+    document.getElementById("loginBtn").addEventListener("click", async () => {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => location.href = "main.html")
-        .catch(e => alert("登入失敗：" + e.message));
-    };
-
-    document.getElementById("signupBtn").onclick = () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      createUserWithEmailAndPassword(auth, email, password)
-        .then(() => alert("註冊成功，請重新登入"))
-        .catch(e => alert("註冊失敗：" + e.message));
-    };
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "home.html";
+      } catch (error) {
+        document.getElementById("message").textContent = "❌ 登入失敗：" + error.message;
+      }
+    });
   </script>
-</head>
-<body>
-  <h2>登入頁面</h2>
-  <input id="email" type="email" placeholder="Email" /><br />
-  <input id="password" type="password" placeholder="Password" /><br />
-  <button id="loginBtn">登入</button>
-  <button id="signupBtn">註冊</button>
 </body>
 </html>
