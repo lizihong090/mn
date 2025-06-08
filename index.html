@@ -1,233 +1,131 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" /> <!-- 設定字元編碼為 UTF-8 -->
-  <title>記帳與收入累積圖表（含刪除）</title> <!-- 網頁標題 -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- 載入 Chart.js -->
+  <meta charset="UTF-8">
+  <title>記帳系統</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    table {
-      border-collapse: collapse; /* 表格邊框合併 */
-      width: 100%; /* 寬度 100% */
-      max-width: 800px; /* 最大寬度限制 */
-      margin-top: 10px; /* 上方外距 */
-    }
-    th, td {
-      border: 1px solid #aaa; /* 邊框樣式 */
-      padding: 6px 8px; /* 內距 */
-      text-align: center; /* 置中對齊 */
-    }
-    th {
-      background-color: #f0f0f0; /* 表頭背景色 */
-    }
-    button.delete-btn {
-      background-color: #e74c3c; /* 刪除按鈕背景色 */
-      border: none;
-      color: white;
-      padding: 5px 10px;
-      cursor: pointer; /* 指標樣式 */
-      border-radius: 3px; /* 邊框圓角 */
-    }
-    button.delete-btn:hover {
-      background-color: #c0392b; /* 滑鼠移上按鈕時的背景色 */
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    label, select, canvas { display: block; margin: 10px 0; }
   </style>
 </head>
 <body>
-  <h2>記帳系統</h2> <!-- 主標題 -->
+  <h1>記帳系統</h1>
 
-  <!-- 表單區域 -->
-  <form id="form">
-    <label>日期：
-      <input type="date" id="date" required /> <!-- 輸入日期 -->
-    </label>
-    <label>類型：
-      <select id="type" required> <!-- 收入或支出 -->
-        <option value="">請選擇</option>
-        <option value="income">收入</option>
-        <option value="expense">支出</option>
-      </select>
-    </label>
-    <label>金額：
-      <input type="number" id="amount" step="0.01" required /> <!-- 金額輸入框 -->
-    </label>
-    <label>備註：
-      <input type="text" id="note" /> <!-- 備註欄 -->
-    </label>
-    <button type="submit">新增記錄</button> <!-- 提交按鈕 -->
-  </form>
+  <!-- 月份篩選 -->
+  <label for="month-select">選擇月份：</label>
+  <select id="month-select">
+    <option value="">全部</option>
+    <option value="01">1月</option>
+    <option value="02">2月</option>
+    <option value="03">3月</option>
+    <option value="04">4月</option>
+    <option value="05">5月</option>
+    <option value="06">6月</option>
+    <option value="07">7月</option>
+    <option value="08">8月</option>
+    <option value="09">9月</option>
+    <option value="10">10月</option>
+    <option value="11">11月</option>
+    <option value="12">12月</option>
+  </select>
 
-  <hr /> <!-- 分隔線 -->
+  <!-- 圖表顯示 -->
+  <h3>每月支出圖表</h3>
+  <canvas id="chart"></canvas>
 
-  <!-- 月份選擇 -->
-  <label>選擇月份：
-    <input type="month" id="monthPicker" />
-  </label>
-
-  <!-- 總結區塊 -->
-  <div>
-    <p>全部總收入：<span id="totalIncome">0</span> 元</p>
-    <p>當月收入：<span id="monthIncome">0</span> 元</p>
-    <p>當月支出：<span id="monthExpense">0</span> 元</p>
-  </div>
-
-  <!-- 圖表區域 -->
-  <canvas id="chart" width="800" height="400"></canvas>
-
-  <!-- 記錄表格 -->
-  <h3>所有記錄</h3>
-  <table id="recordsTable">
-    <thead>
-      <tr>
-        <th>日期</th>
-        <th>類型</th>
-        <th>金額</th>
-        <th>備註</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- 資料列由 JS 動態產生 -->
-    </tbody>
-  </table>
-
-  <button id="addBtn">添加</button> <!-- 導向 material.html 的按鈕 -->
-
-  <!-- 主程式腳本：Firebase 與 Chart.js 操作邏輯 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
-    // Firebase 設定
-    const firebaseConfig = {
-      apiKey: "...",
-      authDomain: "...",
-      projectId: "...",
-      storageBucket: "...",
-      messagingSenderId: "...",
-      appId: "...",
-      measurementId: "..."
-    };
-
+  <script>
     // 初始化 Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const colRef = collection(db, "records"); // 設定 collection 參考
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
+      authDomain: "project-1743045136631756226.firebaseapp.com",
+      projectId: "project-1743045136631756226",
+      storageBucket: "project-1743045136631756226.appspot.com",
+      messagingSenderId: "660576126542",
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+      measurementId: "G-31VC1RK1HK"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    // DOM 元素引用
-    const form = document.getElementById("form");
-    const monthPicker = document.getElementById("monthPicker");
-    const totalIncomeEl = document.getElementById("totalIncome");
-    const monthIncomeEl = document.getElementById("monthIncome");
-    const monthExpenseEl = document.getElementById("monthExpense");
-    const ctx = document.getElementById("chart").getContext('2d');
-    const recordsTableBody = document.querySelector("#recordsTable tbody");
+    const chartCanvas = document.getElementById('chart');
+    const monthSelect = document.getElementById('month-select');
 
-    let allData = []; // 所有資料
-    let chart; // Chart 實體
+    let chart;
 
-    // 預設顯示當月
-    const today = new Date();
-    monthPicker.value = today.toISOString().slice(0,7);
+    // 畫圖表函式
+    function renderChart(data) {
+      const monthlyTotal = {};
 
-    // 表單提交處理
-    form.addEventListener("submit", async e => {
-      e.preventDefault(); // 防止預設送出
-      const type = document.getElementById("type").value;
-      const amount = parseFloat(document.getElementById("amount").value);
-      const note = document.getElementById("note").value;
-      const date = document.getElementById("date").value;
-
-      if (!date || !amount || !type) {
-        alert("請完整填寫必填欄位");
-        return;
-      }
-
-      try {
-        await addDoc(colRef, { type, amount, note, date });
-        alert("✅ 成功新增！");
-        form.reset();
-        await loadData();
-        renderTable();
-        renderChart();
-      } catch (err) {
-        alert("❌ 新增失敗：" + err.message);
-        console.error(err);
-      }
-    });
-
-    // 載入所有資料
-    async function loadData() {
-      allData = [];
-      const snapshot = await getDocs(colRef);
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        allData.push({
-          id: docSnap.id, // 加入 ID 以便刪除
-          ...data,
-          amount: Number(data.amount),
-          date: data.date
-        });
-      });
-    }
-
-    // 渲染資料表格
-    function renderTable() {
-      recordsTableBody.innerHTML = "";
-      if(allData.length === 0){
-        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無任何記錄</td></tr>`;
-        return;
-      }
-
-      allData.sort((a,b) => new Date(b.date) - new Date(a.date)); // 依照日期由新到舊排序
-
-      allData.forEach(item => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${item.date}</td>
-          <td>${item.type === "income" ? "收入" : "支出"}</td>
-          <td>${item.amount.toFixed(2)}</td>
-          <td>${item.note || ""}</td>
-          <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
-        `;
-        recordsTableBody.appendChild(tr);
+      data.forEach(entry => {
+        const date = new Date(entry.date);
+        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlyTotal[month]) monthlyTotal[month] = 0;
+        monthlyTotal[month] += entry.amount;
       });
 
-      // 加入刪除按鈕事件
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async e => {
-          const id = e.target.dataset.id;
-          if(confirm("確定要刪除這筆記錄嗎？")) {
-            try {
-              await deleteDoc(doc(db, "records", id));
-              alert("✅ 已刪除");
-              await loadData();
-              renderTable();
-              renderChart();
-            } catch (err) {
-              alert("❌ 刪除失敗：" + err.message);
-              console.error(err);
+      const labels = Object.keys(monthlyTotal).sort();
+      const amounts = labels.map(month => monthlyTotal[month]);
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(chartCanvas, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '每月總支出',
+            data: amounts,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
             }
           }
-        });
+        }
       });
     }
 
-    // 月份選擇改變時觸發圖表重繪
-    monthPicker.addEventListener("change", () => {
-      renderChart();
-    });
+    // 載入 Firestore 資料
+    function loadData() {
+      db.collection("expenses").get().then(snapshot => {
+        const data = [];
+        snapshot.forEach(doc => {
+          const record = doc.data();
+          if (record.date && record.amount != null) {
+            data.push({
+              date: record.date,
+              amount: Number(record.amount),
+              id: doc.id
+            });
+          }
+        });
 
-    // 導向 material.html
-    addBtn.addEventListener("click", () => {
-      window.location.href = "material.html";
-    });
+        // 排序資料（日期升冪）
+        const sortedData = data.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 初始載入資料與畫面
-    await loadData();
-    renderTable();
-    renderChart();
+        // 依月份篩選
+        const selectedMonth = monthSelect.value;
+        const filteredData = selectedMonth ? sortedData.filter(entry => {
+          const entryMonth = new Date(entry.date).getMonth() + 1;
+          return String(entryMonth).padStart(2, '0') === selectedMonth;
+        }) : sortedData;
 
-    // 以下省略 renderChart() 的內容（你可再請我為 renderChart 加註解）
+        renderChart(filteredData);
+      });
+    }
+
+    // 月份選單改變時載入資料
+    monthSelect.addEventListener('change', loadData);
+
+    // 初始載入
+    loadData();
   </script>
 </body>
 </html>
