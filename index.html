@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>記帳與收入累積圖表（含刪除）</title>
+  <!-- 引入Chart.js圖表庫 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    /* 表格樣式設定 */
     table {
       border-collapse: collapse;
       width: 100%;
@@ -17,10 +19,11 @@
       text-align: center;
     }
     th {
-      background-color: #f0f0f0;
+      background-color: #f0f0f0; /* 表頭背景色 */
     }
+    /* 刪除按鈕樣式 */
     button.delete-btn {
-      background-color: #e74c3c;
+      background-color: #e74c3c; /* 紅色背景 */
       border: none;
       color: white;
       padding: 5px 10px;
@@ -28,16 +31,18 @@
       border-radius: 3px;
     }
     button.delete-btn:hover {
-      background-color: #c0392b;
+      background-color: #c0392b; /* 滑鼠懸停時加深紅色 */
     }
   </style>
 </head>
 <body>
+  <!-- 主標題 -->
   <h2>記帳系統</h2>
 
+  <!-- 表單區域 -->
   <form id="form">
     <label>日期：
-      <input type="date" id="date" required />
+      <input type="date" id="date" required /> <!-- 日期選擇 -->
     </label>
     <label>類型：
       <select id="type" required>
@@ -47,28 +52,32 @@
       </select>
     </label>
     <label>金額：
-      <input type="number" id="amount" step="0.01" required />
+      <input type="number" id="amount" step="0.01" required /> <!-- 允許小數輸入 -->
     </label>
     <label>備註：
-      <input type="text" id="note" />
+      <input type="text" id="note" /> <!-- 備註輸入 -->
     </label>
-    <button type="submit">新增記錄</button>
+    <button type="submit">新增記錄</button> <!-- 提交按鈕 -->
   </form>
 
-  <hr />
+  <hr /> <!-- 分隔線 -->
 
+  <!-- 月份選擇器 -->
   <label>選擇月份：
     <input type="month" id="monthPicker" />
   </label>
 
+  <!-- 統計資訊顯示區 -->
   <div>
     <p>全部總收入：<span id="totalIncome">0</span> 元</p>
     <p>當月收入：<span id="monthIncome">0</span> 元</p>
     <p>當月支出：<span id="monthExpense">0</span> 元</p>
   </div>
 
+  <!-- 圖表容器 -->
   <canvas id="chart" width="800" height="400"></canvas>
 
+  <!-- 記錄表格 -->
   <h3>所有記錄</h3>
   <table id="recordsTable">
     <thead>
@@ -81,17 +90,26 @@
       </tr>
     </thead>
     <tbody>
-      <!-- 資料列由 JS 動態產生 -->
+      <!-- 動態生成記錄區域 -->
     </tbody>
   </table>
 
+   <!-- 跳轉按鈕 -->
    <button id="addBtn">添加</button>
 
   <script type="module">
+    // 導入Firebase模組
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      getDocs, 
+      deleteDoc, 
+      doc 
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // Firebase config
+    // Firebase配置設定
     const firebaseConfig = {
       apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
       authDomain: "project-1743045136631756226.firebaseapp.com",
@@ -102,43 +120,50 @@
       measurementId: "G-31VC1RK1HK"
     };
 
+    // 初始化Firebase應用
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const colRef = collection(db, "records");
+    const db = getFirestore(app);  // 獲取Firestore實例
+    const colRef = collection(db, "records");  // 指向'records'集合
 
+    // DOM元素獲取
     const form = document.getElementById("form");
     const monthPicker = document.getElementById("monthPicker");
     const totalIncomeEl = document.getElementById("totalIncome");
     const monthIncomeEl = document.getElementById("monthIncome");
     const monthExpenseEl = document.getElementById("monthExpense");
-    const ctx = document.getElementById("chart").getContext('2d');
+    const ctx = document.getElementById("chart").getContext('2d');  // 圖表繪製上下文
     const recordsTableBody = document.querySelector("#recordsTable tbody");
+    const addBtn = document.getElementById("addBtn");
 
-    let allData = [];
-    let chart;
+    let allData = [];  // 儲存所有記帳記錄
+    let chart;  // Chart.js實例
 
-    // 預設選擇當月
+    // 設定月份選擇器預設值為當前月份
     const today = new Date();
     monthPicker.value = today.toISOString().slice(0,7);
 
-    // 新增記錄
+    // 表單提交事件處理
     form.addEventListener("submit", async e => {
-      e.preventDefault();
+      e.preventDefault();  // 阻止表單默認提交行為
 
+      // 獲取表單數據
       const type = document.getElementById("type").value;
       const amount = parseFloat(document.getElementById("amount").value);
       const note = document.getElementById("note").value;
       const date = document.getElementById("date").value;
 
+      // 驗證必填欄位
       if (!date || !amount || !type) {
         alert("請完整填寫必填欄位");
         return;
       }
 
       try {
+        // 新增記錄到Firestore
         await addDoc(colRef, { type, amount, note, date });
         alert("✅ 成功新增！");
-        form.reset();
+        form.reset();  // 重置表單
+        // 重新加載數據並更新UI
         await loadData();
         renderTable();
         renderChart();
@@ -148,50 +173,57 @@
       }
     });
 
-    // 載入所有資料
+    // 加載所有記帳數據
     async function loadData() {
-      allData = [];
+      allData = [];  // 清空現有數據
+      // 從Firestore獲取所有文檔
       const snapshot = await getDocs(colRef);
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
+        // 將文檔數據存入allData數組
         allData.push({
-          id: docSnap.id,  // 保留 id 以便刪除
+          id: docSnap.id,  // 保留文檔ID以便後續操作
           ...data,
-          amount: Number(data.amount),
-          date: data.date // yyyy-mm-dd 字串
+          amount: Number(data.amount),  // 確保金額為數字類型
+          date: data.date  // yyyy-mm-dd格式日期字符串
         });
       });
     }
 
-    // 渲染資料表
+    // 渲染記錄表格
     function renderTable() {
-      recordsTableBody.innerHTML = "";
+      recordsTableBody.innerHTML = "";  // 清空表格內容
+      // 若無數據顯示提示信息
       if(allData.length === 0){
         recordsTableBody.innerHTML = `<tr><td colspan="5">目前無任何記錄</td></tr>`;
         return;
       }
-      allData.sort((a,b) => new Date(b.date) - new Date(a.date)); // 日期由新到舊
+      // 按日期降序排序（最新在最前）
+      allData.sort((a,b) => new Date(b.date) - new Date(a.date));
 
+      // 生成表格行
       allData.forEach(item => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${item.date}</td>
           <td>${item.type === "income" ? "收入" : "支出"}</td>
-          <td>${item.amount.toFixed(2)}</td>
-          <td>${item.note || ""}</td>
+          <td>${item.amount.toFixed(2)}</td>  <!-- 金額顯示兩位小數 -->
+          <td>${item.note || ""}</td>  <!-- 備註為空時顯示空字符串 -->
           <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
         `;
         recordsTableBody.appendChild(tr);
       });
 
-      // 加事件監聽器給刪除按鈕
+      // 為所有刪除按鈕添加事件監聽器
       document.querySelectorAll(".delete-btn").forEach(btn => {
         btn.addEventListener("click", async e => {
-          const id = e.target.dataset.id;
+          const id = e.target.dataset.id;  // 獲取記錄ID
           if(confirm("確定要刪除這筆記錄嗎？")) {
             try {
+              // 從Firestore刪除文檔
               await deleteDoc(doc(db, "records", id));
               alert("✅ 已刪除");
+              // 更新數據和UI
               await loadData();
               renderTable();
               renderChart();
@@ -204,63 +236,67 @@
       });
     }
 
-    // 月份選擇事件
+    // 月份選擇變化事件
     monthPicker.addEventListener("change", () => {
-      renderChart();
+      renderChart();  // 重新渲染圖表
     });
 
+    // 跳轉按鈕事件
     addBtn.addEventListener("click", () => {
-      window.location.href = "material.html";
+      window.location.href = "material.html";  // 跳轉到其他頁面
     });
 
-    // 頁面初始載入
-    await loadData();
-    renderTable();
-    renderChart();
+    // 頁面初始化時執行
+    (async function init() {
+      await loadData();  // 加載數據
+      renderTable();     // 渲染表格
+      renderChart();     // 繪製圖表
+    })();
 
+    // 渲染圖表函數
     function renderChart() {
+      // 若無數據則清除現有圖表
       if (!allData.length) {
         if(chart) chart.destroy();
+        // 重置統計數據顯示
         totalIncomeEl.textContent = "0";
         monthIncomeEl.textContent = "0";
         monthExpenseEl.textContent = "0";
         return;
       }
 
-      const selectedMonth = monthPicker.value; // 格式 yyyy-mm
+      const selectedMonth = monthPicker.value;  // 獲取選中的月份（yyyy-mm格式）
       if (!selectedMonth) return;
 
+      // 解析年份和月份
       const [year, month] = selectedMonth.split('-');
       const selectedYear = parseInt(year);
       const selectedMonthNum = parseInt(month);
 
-      // 篩選該年度所有資料（方便累積計算）
+      // 篩選當前年份數據（用於累積計算）
       const yearData = allData.filter(item => {
         const d = new Date(item.date);
         return d.getFullYear() === selectedYear;
       });
 
-      // 該年度1月1日到當月最後一天日期範圍
-      const startDate = new Date(selectedYear, 0, 1); // 1月1日
-      const endDate = new Date(selectedYear, selectedMonthNum, 0); // 當月最後一天
-      const daysCount = endDate.getDate();
-
-      // 當月資料篩選
-      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
+      // 計算當月天數
       const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+      const daysCount = monthEndDate.getDate();
 
+      // 篩選當月數據
+      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
       const monthData = allData.filter(item => {
         const d = new Date(item.date);
         return d >= monthStartDate && d <= monthEndDate;
       });
 
-      // 全部總收入
+      // 計算全部總收入
       const totalIncome = allData
         .filter(d => d.type === 'income')
         .reduce((acc, cur) => acc + cur.amount, 0);
-      totalIncomeEl.textContent = totalIncome.toFixed(2);
+      totalIncomeEl.textContent = totalIncome.toFixed(2);  // 顯示兩位小數
 
-      // 當月收入與支出
+      // 計算當月收入和支出
       const monthIncome = monthData
         .filter(d => d.type === 'income')
         .reduce((acc, cur) => acc + cur.amount, 0);
@@ -271,25 +307,27 @@
       monthIncomeEl.textContent = monthIncome.toFixed(2);
       monthExpenseEl.textContent = monthExpense.toFixed(2);
 
-      // 初始化當月每天收入與支出
+      // 初始化每日收入支出物件
       const dailyIncome = {};
       const dailyExpense = {};
+      // 初始化當月每日數據
       for(let d=1; d<=daysCount; d++) {
         const dayStr = `${year}-${month.padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         dailyIncome[dayStr] = 0;
         dailyExpense[dayStr] = 0;
       }
 
+      // 填充每日實際數據
       monthData.forEach(item => {
         if(item.type === 'income') dailyIncome[item.date] += item.amount;
         else if(item.type === 'expense') dailyExpense[item.date] += item.amount;
       });
 
-      // 計算收入累積（從1月1日累積到當月最後一天）
+      // 計算收入累積（從當年1月1日開始）
       const incomeCumulative = [];
       let cumulativeSum = 0;
 
-      // 先建立該年1月1日至當月最後一天所有日期字串
+      // 生成從1月1日到當月最後一天的日期數組
       const allDates = [];
       for(let m=1; m<=selectedMonthNum; m++) {
         const lastDay = new Date(selectedYear, m, 0).getDate();
@@ -298,94 +336,104 @@
         }
       }
 
+      // 計算累積收入
       allDates.forEach(dateStr => {
         let dayIncome = 0;
         const d = new Date(dateStr);
+        // 當月日期使用即時數據
         if(d >= monthStartDate && d <= monthEndDate) {
           dayIncome = dailyIncome[dateStr] || 0;
-        } else {
-          const dayData = yearData.filter(item => item.date === dateStr && item.type === 'income');
+        } 
+        // 非當月日期使用全年數據
+        else {
+          const dayData = yearData.filter(item => 
+            item.date === dateStr && item.type === 'income'
+          );
           dayIncome = dayData.reduce((acc, cur) => acc + cur.amount, 0);
         }
         cumulativeSum += dayIncome;
 
+        // 只記錄當月累積數據點
         if(d >= monthStartDate && d <= monthEndDate) {
           incomeCumulative.push(cumulativeSum);
         }
       });
 
-      // 繪製當月天數標籤
+      // 生成當月日期標籤（1-31）
       const labels = [];
       for(let d=1; d<=daysCount; d++) {
         labels.push(String(d));
       }
 
+      // 圖表數據集配置
       const data = {
-        labels,
+        labels,  // X軸標籤（日期）
         datasets: [
           {
-            type: 'bar',
+            type: 'bar',  // 柱狀圖
             label: '每日收入',
-            backgroundColor: 'rgba(75, 192, 192, 0.7)',
-            data: Object.values(dailyIncome),
-            yAxisID: 'y',
+            backgroundColor: 'rgba(75, 192, 192, 0.7)',  // 青色
+            data: Object.values(dailyIncome),  // 每日收入數據
+            yAxisID: 'y',  // 使用左側Y軸
           },
           {
             type: 'bar',
             label: '每日支出',
-            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+            backgroundColor: 'rgba(255, 99, 132, 0.7)',  // 紅色
             data: Object.values(dailyExpense),
             yAxisID: 'y',
           },
           {
-            type: 'line',
+            type: 'line',  // 折線圖
             label: '收入累積',
-            borderColor: 'rgba(54, 162, 235, 1)',
+            borderColor: 'rgba(54, 162, 235, 1)',  // 藍色
             backgroundColor: 'rgba(54, 162, 235, 0.3)',
-            data: incomeCumulative,
-            yAxisID: 'y1',
-            tension: 0.3,
-            fill: false,
-            pointRadius: 3,
+            data: incomeCumulative,  // 累積收入數據
+            yAxisID: 'y1',  // 使用右側Y軸
+            tension: 0.3,  // 曲線平滑度
+            fill: false,  // 不填充區域
+            pointRadius: 3,  // 數據點大小
           }
         ]
       };
 
+      // 圖表配置選項
       const options = {
-        responsive: true,
+        responsive: true,  // 響應式設計
         interaction: {
-          mode: 'index',
+          mode: 'index',  // 交互模式
           intersect: false,
         },
-        stacked: false,
+        stacked: false,  // 不堆疊柱狀圖
         scales: {
           y: {
             type: 'linear',
             display: true,
-            position: 'left',
+            position: 'left',  // 左側Y軸
             title: { display: true, text: '金額 (元)' },
-            beginAtZero: true,
+            beginAtZero: true,  // 從零開始
           },
           y1: {
             type: 'linear',
             display: true,
-            position: 'right',
-            grid: { drawOnChartArea: false },
+            position: 'right',  // 右側Y軸（累積收入）
+            grid: { drawOnChartArea: false },  // 不在圖表區繪製網格線
             title: { display: true, text: '收入累積 (元)' },
             beginAtZero: true,
           }
         }
       };
 
+      // 若已有圖表實例則先銷毀
       if(chart) {
         chart.destroy();
       }
+      // 創建新圖表
       chart = new Chart(ctx, {
         data,
         options
       });
     }
-  </script>
   </script>
 </body>
 </html>
