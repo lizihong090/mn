@@ -435,6 +435,23 @@
       });
     }
 
+    // 計算指定月份之前的累積收入
+    async function getPreviousCumulativeIncome(endDate) {
+      const snapshot = await getDocs(colRef);
+      let total = 0;
+      
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const recordDate = new Date(data.date);
+        
+        if (recordDate < endDate && data.type === 'income') {
+          total += Number(data.amount);
+        }
+      });
+      
+      return total;
+    }
+
     // 月份選擇事件
     monthPicker.addEventListener("change", () => {
       renderCharts();
@@ -503,7 +520,7 @@
     }
 
     // 渲染合併圖表（柱狀圖+折線圖）
-    function renderCombinedChart() {
+    async function renderCombinedChart() {
       if (combinedChart) combinedChart.destroy();
       
       if (!allData.length) {
@@ -532,11 +549,14 @@
         return d >= monthStartDate && d <= monthEndDate;
       });
 
+      // 計算上個月之前的累積收入
+      const previousCumulative = await getPreviousCumulativeIncome(monthStartDate);
+
       // 初始化每日數據
       const dailyIncome = Array(daysCount).fill(0);
       const dailyExpense = Array(daysCount).fill(0);
       const cumulativeIncome = Array(daysCount).fill(0);
-      let cumulativeSum = 0;
+      let cumulativeSum = previousCumulative; // 從上個月的累積開始
 
       // 計算每日收入和支出
       for (let day = 1; day <= daysCount; day++) {
@@ -550,7 +570,7 @@
         dailyIncome[day - 1] = dayIncome;
         dailyExpense[day - 1] = dayExpense;
         
-        // 計算當月累積收入（從當月第一天開始重新計算）
+        // 計算累積收入（包含上個月之前的累積）
         cumulativeSum += dayIncome;
         cumulativeIncome[day - 1] = cumulativeSum;
       }
@@ -633,7 +653,7 @@
                 display: true,
                 text: '累積收入 (¥)'
               },
-              beginAtZero: true,
+              beginAtZero: false, // 修改為 false 以顯示實際累積值
               grid: {
                 drawOnChartArea: false
               }
