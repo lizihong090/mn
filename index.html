@@ -259,6 +259,26 @@
         justify-content: center;
       }
     }
+    
+    /* 新增的按鈕樣式 */
+    .nav-button {
+      display: block;
+      width: 200px;
+      margin: 30px auto;
+      text-align: center;
+      background: linear-gradient(120deg, #4b6cb7 0%, #182848 100%);
+      color: white;
+      padding: 12px 25px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .nav-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(75, 108, 183, 0.4);
+    }
   </style>
 </head>
 <body>
@@ -287,7 +307,7 @@
           </div>
           
           <div class="form-group">
-            <label for="amount">金額 (¥)</label>
+            <label for="amount">金額</label>
             <input type="number" id="amount" step="0.01" required />
           </div>
         </div>
@@ -316,22 +336,22 @@
     <div class="stats-container">
       <div class="stat-card income">
         <div class="stat-title">總收入</div>
-        <div class="stat-value">¥<span id="totalIncome">0</span></div>
+        <div class="stat-value"><span id="totalIncome">0</span></div>
       </div>
       
       <div class="stat-card income">
         <div class="stat-title">當月收入</div>
-        <div class="stat-value">¥<span id="monthIncome">0</span></div>
+        <div class="stat-value"><span id="monthIncome">0</span></div>
       </div>
       
       <div class="stat-card expense">
         <div class="stat-title">當月支出</div>
-        <div class="stat-value">¥<span id="monthExpense">0</span></div>
+        <div class="stat-value"><span id="monthExpense">0</span></div>
       </div>
       
       <div class="stat-card net">
         <div class="stat-title">當月結餘</div>
-        <div class="stat-value">¥<span id="monthBalance">0</span></div>
+        <div class="stat-value"><span id="monthBalance">0</span></div>
       </div>
     </div>
     
@@ -352,6 +372,11 @@
         <canvas id="distributionChart"></canvas>
       </div>
     </div>
+    
+    <!-- 新增的導航按鈕 -->
+    <a href="material.html" class="nav-button">
+      <i class="fas fa-box-open"></i> 查看材料管理
+    </a>
   </div>
 
   <script type="module">
@@ -628,7 +653,7 @@
                   if (label) {
                     label += ': ';
                   }
-                  label += '¥' + context.raw.toFixed(2);
+                  label += context.raw.toFixed(2);
                   return label;
                 }
               }
@@ -641,7 +666,7 @@
               position: 'left',
               title: {
                 display: true,
-                text: '每日收支 (¥)'
+                text: '每日收支'
               },
               beginAtZero: true
             },
@@ -651,7 +676,7 @@
               position: 'right',
               title: {
                 display: true,
-                text: '累積收入 (¥)'
+                text: '累積收入'
               },
               beginAtZero: false, // 修改為 false 以顯示實際累積值
               grid: {
@@ -726,7 +751,7 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return `${context.label}: ¥${context.raw.toFixed(2)}`;
+                  return `${context.label}: ${context.raw.toFixed(2)}`;
                 }
               }
             }
