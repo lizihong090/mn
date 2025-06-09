@@ -550,7 +550,7 @@
         dailyIncome[day - 1] = dayIncome;
         dailyExpense[day - 1] = dayExpense;
         
-        // 計算累積收入
+        // 計算當月累積收入（從當月第一天開始重新計算）
         cumulativeSum += dayIncome;
         cumulativeIncome[day - 1] = cumulativeSum;
       }
