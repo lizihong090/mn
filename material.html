@@ -13,6 +13,23 @@
     th { background-color: #f2f2f2; }
     select, input, button { margin: 5px; padding: 6px; }
     #chart { max-height: 300px; margin-top: 30px; }
+    /* 新增的按鈕樣式 */
+    .nav-button {
+      display: block;
+      width: 200px;
+      margin: 30px auto;
+      padding: 10px;
+      background-color: #4b6cb7;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .nav-button:hover {
+      background-color: #3a56a0;
+    }
   </style>
 </head>
 <body>
@@ -35,6 +52,9 @@
   </table>
 
   <canvas id="chart"></canvas>
+
+  <!-- 新增的導航按鈕 -->
+  <a href="index.html" class="nav-button">返回財務分析面板</a>
 
   <script>
     // Firebase 設定
