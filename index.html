@@ -339,26 +339,17 @@
       <p>當月財務健康度: <span class="highlight">良好</span> | 支出佔收入比例: <span id="expenseRatio">0%</span></p>
     </div>
     
-    <div class="charts-row">
-      <div class="chart-wrapper">
-        <h3><i class="fas fa-chart-bar"></i> 每日收支趨勢</h3>
-        <div class="chart-container">
-          <canvas id="trendChart"></canvas>
-        </div>
-      </div>
-      
-      <div class="chart-wrapper">
-        <h3><i class="fas fa-chart-pie"></i> 收支類型分佈</h3>
-        <div class="chart-container">
-          <canvas id="distributionChart"></canvas>
-        </div>
+    <div class="card">
+      <h2 class="card-title"><i class="fas fa-chart-bar"></i> 每日收支與收入累積</h2>
+      <div class="chart-container">
+        <canvas id="combinedChart"></canvas>
       </div>
     </div>
     
-    <div class="card">
-      <h2 class="card-title"><i class="fas fa-chart-area"></i> 月度收入累積分析</h2>
+    <div class="chart-wrapper">
+      <h3><i class="fas fa-chart-pie"></i> 收支類型分佈</h3>
       <div class="chart-container">
-        <canvas id="cumulativeChart"></canvas>
+        <canvas id="distributionChart"></canvas>
       </div>
     </div>
   </div>
@@ -393,12 +384,11 @@
     const expenseRatioEl = document.getElementById("expenseRatio");
     
     // 圖表上下文
-    const trendCtx = document.getElementById("trendChart").getContext('2d');
+    const combinedCtx = document.getElementById("combinedChart").getContext('2d');
     const distributionCtx = document.getElementById("distributionChart").getContext('2d');
-    const cumulativeCtx = document.getElementById("cumulativeChart").getContext('2d');
 
     let allData = [];
-    let trendChart, distributionChart, cumulativeChart;
+    let combinedChart, distributionChart;
 
     // 設置預設月份為當前月
     const today = new Date();
@@ -458,9 +448,8 @@
 
     // 渲染所有圖表
     function renderCharts() {
-      renderTrendChart();
+      renderCombinedChart();
       renderDistributionChart();
-      renderCumulativeChart();
       updateFinancialSummary();
     }
 
@@ -513,12 +502,12 @@
       expenseRatioEl.textContent = `${ratio}%`;
     }
 
-    // 渲染趨勢圖
-    function renderTrendChart() {
-      if (trendChart) trendChart.destroy();
+    // 渲染合併圖表（柱狀圖+折線圖）
+    function renderCombinedChart() {
+      if (combinedChart) combinedChart.destroy();
       
       if (!allData.length) {
-        trendChart = new Chart(trendCtx, {
+        combinedChart = new Chart(combinedCtx, {
           type: 'bar',
           data: { datasets: [] },
           options: { responsive: true, maintainAspectRatio: false }
@@ -546,39 +535,61 @@
       // 初始化每日數據
       const dailyIncome = Array(daysCount).fill(0);
       const dailyExpense = Array(daysCount).fill(0);
+      const cumulativeIncome = Array(daysCount).fill(0);
+      let cumulativeSum = 0;
 
-      monthData.forEach(item => {
-        const day = new Date(item.date).getDate() - 1;
-        if (item.type === 'income') dailyIncome[day] += item.amount;
-        else if (item.type === 'expense') dailyExpense[day] += item.amount;
-      });
+      // 計算每日收入和支出
+      for (let day = 1; day <= daysCount; day++) {
+        const dateStr = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = monthData.filter(item => item.date === dateStr);
+        
+        // 計算每日收入與支出
+        const dayIncome = dayData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
+        const dayExpense = dayData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
+        
+        dailyIncome[day - 1] = dayIncome;
+        dailyExpense[day - 1] = dayExpense;
+        
+        // 計算累積收入
+        cumulativeSum += dayIncome;
+        cumulativeIncome[day - 1] = cumulativeSum;
+      }
 
       // 生成標籤 (1, 2, 3, ...)
       const labels = Array.from({length: daysCount}, (_, i) => i + 1);
 
-      // 創建趨勢圖表
-      trendChart = new Chart(trendCtx, {
-        type: 'line',
+      // 創建組合圖表
+      combinedChart = new Chart(combinedCtx, {
+        type: 'bar',
         data: {
           labels,
           datasets: [
             {
               label: '每日收入',
               data: dailyIncome,
+              backgroundColor: 'rgba(39, 174, 96, 0.7)',
               borderColor: '#27ae60',
-              backgroundColor: 'rgba(39, 174, 96, 0.1)',
-              borderWidth: 3,
-              tension: 0.3,
-              fill: true
+              borderWidth: 1,
+              yAxisID: 'y'
             },
             {
               label: '每日支出',
               data: dailyExpense,
+              backgroundColor: 'rgba(231, 76, 60, 0.7)',
               borderColor: '#e74c3c',
-              backgroundColor: 'rgba(231, 76, 60, 0.1)',
+              borderWidth: 1,
+              yAxisID: 'y'
+            },
+            {
+              label: '收入累積',
+              data: cumulativeIncome,
+              type: 'line',
+              borderColor: '#3498db',
+              backgroundColor: 'rgba(52, 152, 219, 0.1)',
               borderWidth: 3,
               tension: 0.3,
-              fill: true
+              fill: true,
+              yAxisID: 'y1'
             }
           ]
         },
@@ -588,15 +599,43 @@
           plugins: {
             title: {
               display: true,
-              text: '每日收支趨勢'
+              text: '每日收支與收入累積'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  label += '¥' + context.raw.toFixed(2);
+                  return label;
+                }
+              }
             }
           },
           scales: {
             y: {
-              beginAtZero: true,
+              type: 'linear',
+              display: true,
+              position: 'left',
               title: {
                 display: true,
-                text: '金額 (¥)'
+                text: '每日收支 (¥)'
+              },
+              beginAtZero: true
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: '累積收入 (¥)'
+              },
+              beginAtZero: true,
+              grid: {
+                drawOnChartArea: false
               }
             },
             x: {
@@ -669,98 +708,6 @@
                 label: function(context) {
                   return `${context.label}: ¥${context.raw.toFixed(2)}`;
                 }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // 渲染累積圖
-    function renderCumulativeChart() {
-      if (cumulativeChart) cumulativeChart.destroy();
-      
-      if (!allData.length) {
-        cumulativeChart = new Chart(cumulativeCtx, {
-          type: 'line',
-          data: { datasets: [] },
-          options: { responsive: true, maintainAspectRatio: false }
-        });
-        return;
-      }
-
-      const selectedMonth = monthPicker.value;
-      if (!selectedMonth) return;
-
-      const [year, month] = selectedMonth.split('-');
-      const selectedYear = parseInt(year);
-      const selectedMonthNum = parseInt(month);
-
-      // 篩選當月數據
-      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
-      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
-      const daysCount = monthEndDate.getDate();
-
-      // 篩選當月收入數據
-      const monthData = allData.filter(item => {
-        const d = new Date(item.date);
-        return d >= monthStartDate && d <= monthEndDate && item.type === 'income';
-      });
-
-      // 初始化累積收入數組
-      const cumulativeIncome = Array(daysCount).fill(0);
-      let cumulativeSum = 0;
-
-      // 計算每日累積收入
-      for (let day = 1; day <= daysCount; day++) {
-        const dateStr = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayData = monthData.filter(item => item.date === dateStr);
-        const dayTotal = dayData.reduce((acc, cur) => acc + cur.amount, 0);
-        cumulativeSum += dayTotal;
-        cumulativeIncome[day - 1] = cumulativeSum;
-      }
-
-      // 生成標籤 (1, 2, 3, ...)
-      const labels = Array.from({length: daysCount}, (_, i) => i + 1);
-
-      // 創建累積圖表
-      cumulativeChart = new Chart(cumulativeCtx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: '收入累積',
-              data: cumulativeIncome,
-              borderColor: '#3498db',
-              backgroundColor: 'rgba(52, 152, 219, 0.1)',
-              borderWidth: 3,
-              tension: 0.3,
-              fill: true
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            title: {
-              display: true,
-              text: '月度收入累積趨勢'
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: '累積金額 (¥)'
-              }
-            },
-            x: {
-              title: {
-                display: true,
-                text: '日期'
               }
             }
           }
