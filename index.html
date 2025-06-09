@@ -360,7 +360,7 @@
     </div>
     
     <div class="card">
-      <h2 class="card-title"><i class="fas fa-chart-bar"></i> 每日收支與收入累積</h2>
+      <h2 class="card-title"><i class="fas fa-chart-bar"></i> 每日收支與總收入</h2>
       <div class="chart-container">
         <canvas id="combinedChart"></canvas>
       </div>
@@ -460,23 +460,6 @@
       });
     }
 
-    // 計算指定月份之前的累積收入
-    async function getPreviousCumulativeIncome(endDate) {
-      const snapshot = await getDocs(colRef);
-      let total = 0;
-      
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const recordDate = new Date(data.date);
-        
-        if (recordDate < endDate && data.type === 'income') {
-          total += Number(data.amount);
-        }
-      });
-      
-      return total;
-    }
-
     // 月份選擇事件
     monthPicker.addEventListener("change", () => {
       renderCharts();
@@ -574,14 +557,15 @@
         return d >= monthStartDate && d <= monthEndDate;
       });
 
-      // 計算上個月之前的累積收入
-      const previousCumulative = await getPreviousCumulativeIncome(monthStartDate);
+      // 計算總收入
+      const totalIncome = allData
+        .filter(d => d.type === 'income')
+        .reduce((acc, cur) => acc + cur.amount, 0);
 
       // 初始化每日數據
       const dailyIncome = Array(daysCount).fill(0);
       const dailyExpense = Array(daysCount).fill(0);
-      const cumulativeIncome = Array(daysCount).fill(0);
-      let cumulativeSum = previousCumulative; // 從上個月的累積開始
+      const totalIncomeArray = Array(daysCount).fill(totalIncome); // 每天顯示相同的總收入值
 
       // 計算每日收入和支出
       for (let day = 1; day <= daysCount; day++) {
@@ -594,10 +578,6 @@
         
         dailyIncome[day - 1] = dayIncome;
         dailyExpense[day - 1] = dayExpense;
-        
-        // 計算累積收入（包含上個月之前的累積）
-        cumulativeSum += dayIncome;
-        cumulativeIncome[day - 1] = cumulativeSum;
       }
 
       // 生成標籤 (1, 2, 3, ...)
@@ -626,8 +606,8 @@
               yAxisID: 'y'
             },
             {
-              label: '收入累積',
-              data: cumulativeIncome,
+              label: '總收入',
+              data: totalIncomeArray,
               type: 'line',
               borderColor: '#3498db',
               backgroundColor: 'rgba(52, 152, 219, 0.1)',
@@ -644,7 +624,7 @@
           plugins: {
             title: {
               display: true,
-              text: '每日收支與收入累積'
+              text: '每日收支與總收入'
             },
             tooltip: {
               callbacks: {
@@ -676,9 +656,9 @@
               position: 'right',
               title: {
                 display: true,
-                text: '累積收入'
+                text: '總收入'
               },
-              beginAtZero: false, // 修改為 false 以顯示實際累積值
+              beginAtZero: false,
               grid: {
                 drawOnChartArea: false
               }
