@@ -220,6 +220,33 @@
       padding: 10px 20px;
     }
     
+    .month-navigation {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .month-navigation button {
+      padding: 8px 12px;
+      background: #4b6cb7;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .month-navigation button:hover {
+      background: #3a5a9c;
+      transform: translateY(-2px);
+    }
+    
+    .month-navigation input[type="month"] {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
     .summary {
       text-align: center;
       margin-top: 20px;
@@ -257,6 +284,11 @@
       .btn-group {
         width: 100%;
         justify-content: center;
+      }
+      
+      .month-navigation {
+        width: 100%;
+        justify-content: space-between;
       }
     }
     
@@ -327,9 +359,10 @@
     
     <div class="month-controls">
       <h2><i class="fas fa-calendar-alt"></i> 財務分析面板</h2>
-      <div>
-        <label>選擇月份：</label>
+      <div class="month-navigation">
+        <button id="prevMonth"><i class="fas fa-chevron-left"></i> 上個月</button>
         <input type="month" id="monthPicker" />
+        <button id="nextMonth">下個月 <i class="fas fa-chevron-right"></i></button>
       </div>
     </div>
     
@@ -402,6 +435,8 @@
     // 獲取DOM元素
     const form = document.getElementById("form");
     const monthPicker = document.getElementById("monthPicker");
+    const prevMonthBtn = document.getElementById("prevMonth");
+    const nextMonthBtn = document.getElementById("nextMonth");
     const totalIncomeEl = document.getElementById("totalIncome");
     const monthIncomeEl = document.getElementById("monthIncome");
     const monthExpenseEl = document.getElementById("monthExpense");
@@ -483,6 +518,22 @@
 
     // 月份選擇事件
     monthPicker.addEventListener("change", () => {
+      renderCharts();
+    });
+
+    // 上個月按鈕點擊事件
+    prevMonthBtn.addEventListener("click", () => {
+      const currentDate = new Date(monthPicker.value + "-01");
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      monthPicker.value = currentDate.toISOString().slice(0,7);
+      renderCharts();
+    });
+
+    // 下個月按鈕點擊事件
+    nextMonthBtn.addEventListener("click", () => {
+      const currentDate = new Date(monthPicker.value + "-01");
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      monthPicker.value = currentDate.toISOString().slice(0,7);
       renderCharts();
     });
 
