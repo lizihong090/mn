@@ -1,89 +1,409 @@
-function renderTable() {
-  const selectedDate = datePicker.value;
-  if (!selectedDate) return;
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>記帳系統</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 30px auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+    select, input, button { margin: 5px; padding: 6px; }
+    .nav-button {
+      display: block;
+      width: 200px;
+      margin: 30px auto;
+      padding: 10px;
+      background-color: #4b6cb7;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .nav-button:hover {
+      background-color: #3a56a0;
+    }
+    /* 新增切換按鈕樣式 */
+    .filter-toggle {
+      margin: 15px 0 5px;
+      text-align: center;
+    }
+    .filter-toggle button {
+      margin: 0 10px;
+      padding: 8px 20px;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #ccc;
+      transition: background-color 0.3s;
+    }
+    .filter-toggle button.active {
+      background-color: #4b6cb7;
+      color: white;
+    }
+    /* 收入/支出切換按鈕 */
+    .type-filter {
+      margin: 15px 0 5px;
+      text-align: center;
+    }
+    .type-filter button {
+      margin: 0 10px;
+      padding: 8px 20px;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #ccc;
+      transition: background-color 0.3s;
+    }
+    .type-filter button.active {
+      background-color: #4b6cb7;
+      color: white;
+    }
 
-  let filteredData = [];
-  if (currentFilter === 'month') {
-    filteredData = allData.filter(item => item.date.startsWith(selectedDate));
-  } else {
-    filteredData = allData.filter(item => item.date === selectedDate);
-  }
+    /* 編輯彈窗 Modal */
+    #editModal {
+      display: none; 
+      position: fixed; 
+      top: 0; left: 0; 
+      width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.5); 
+      justify-content: center; 
+      align-items: center; 
+      z-index: 1000;
+    }
+    #editModal > div {
+      background: #fff; 
+      padding: 20px; 
+      border-radius: 8px; 
+      width: 320px; 
+      box-sizing: border-box;
+    }
+    #editModal h3 {
+      margin-top: 0;
+    }
+    #editForm label {
+      display: block;
+      margin-bottom: 10px;
+    }
+    #editForm input, #editForm select {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    #editForm div {
+      text-align: right;
+    }
+    #editForm button {
+      padding: 6px 12px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>記帳系統</h2>
 
-  recordsTableBody.innerHTML = "";
+  <div class="filter-toggle">
+    <button id="btnMonth" class="active">按月</button>
+    <button id="btnDay">按日</button>
+  </div>
 
-  if (filteredData.length === 0) {
-    recordsTableBody.innerHTML = `<tr><td colspan="6">目前無此期間的記錄</td></tr>`; // 改為6欄
-    return;
-  }
+  <div class="type-filter">
+    <button id="btnAll" class="active">全部</button>
+    <button id="btnIncome">收入</button>
+    <button id="btnExpense">支出</button>
+  </div>
 
-  filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+  <label for="datePicker">選擇月份：</label>
+  <select id="datePicker"></select>
 
-  filteredData.forEach(item => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${item.date}</td>
-      <td>${item.type === "income" ? "收入" : "支出"}</td>
-      <td>${item.amount.toFixed(2)}</td>
-      <td>${item.note || ""}</td>
-      <td>
-        <button class="edit-btn" data-id="${item.id}">編輯</button>
-        <button class="delete-btn" data-id="${item.id}">刪除</button>
-      </td>
-    `;
-    recordsTableBody.appendChild(tr);
-  });
+  <table>
+    <thead>
+      <tr>
+        <th>日期</th>
+        <th>類型</th>
+        <th>金額</th>
+        <th>備註</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="recordsTableBody"></tbody>
+  </table>
 
-  // 刪除功能
-  document.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.addEventListener("click", async e => {
-      const id = e.target.dataset.id;
-      if (confirm("確定要刪除這筆記錄嗎？")) {
-        try {
-          await db.collection("records").doc(id).delete();
-          alert("✅ 已刪除");
-          await loadData();
-          renderDateOptions();
-          renderTable();
-        } catch (err) {
-          alert("❌ 刪除失敗：" + err.message);
-          console.error(err);
-        }
+  <a href="index.html" class="nav-button">返回財務分析面板</a>
+
+  <!-- 編輯彈窗 Modal -->
+  <div id="editModal">
+    <div>
+      <h3>編輯記錄</h3>
+      <form id="editForm">
+        <label>
+          日期 (YYYY-MM-DD)<br />
+          <input type="date" id="editDate" required />
+        </label>
+        <label>
+          類型<br />
+          <select id="editType" required>
+            <option value="income">收入</option>
+            <option value="expense">支出</option>
+          </select>
+        </label>
+        <label>
+          金額<br />
+          <input type="number" id="editAmount" min="0" step="0.01" required />
+        </label>
+        <label>
+          備註<br />
+          <input type="text" id="editNote" />
+        </label>
+        <div>
+          <button type="button" id="editCancelBtn">取消</button>
+          <button type="submit">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Firebase 設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
+      authDomain: "project-1743045136631756226.firebaseapp.com",
+      projectId: "project-1743045136631756226",
+      storageBucket: "project-1743045136631756226.appspot.com",
+      messagingSenderId: "660576126542",
+      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+      measurementId: "G-31VC1RK1HK"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const btnMonth = document.getElementById("btnMonth");
+    const btnDay = document.getElementById("btnDay");
+    const btnAll = document.getElementById("btnAll");
+    const btnIncome = document.getElementById("btnIncome");
+    const btnExpense = document.getElementById("btnExpense");
+    const datePicker = document.getElementById("datePicker");
+    const recordsTableBody = document.getElementById("recordsTableBody");
+
+    // Modal Elements
+    const editModal = document.getElementById("editModal");
+    const editForm = document.getElementById("editForm");
+    const editDate = document.getElementById("editDate");
+    const editType = document.getElementById("editType");
+    const editAmount = document.getElementById("editAmount");
+    const editNote = document.getElementById("editNote");
+    const editCancelBtn = document.getElementById("editCancelBtn");
+
+    let allData = [];
+    let currentFilter = 'month'; // 'month' 或 'day'
+    let currentTypeFilter = 'all'; // 'all' / 'income' / 'expense'
+    let editingId = null;
+
+    async function loadData() {
+      const snapshot = await db.collection("records").get();
+      allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    function renderDateOptions() {
+      datePicker.innerHTML = "";
+      if (currentFilter === 'month') {
+        // 取出所有不同月份 (YYYY-MM)
+        const months = [...new Set(allData.map(item => item.date.slice(0, 7)))].sort().reverse();
+        months.forEach(month => {
+          const option = document.createElement("option");
+          option.value = month;
+          option.textContent = month;
+          datePicker.appendChild(option);
+        });
+      } else {
+        // 按日 - 取出所有不同日期 (YYYY-MM-DD)
+        const days = [...new Set(allData.map(item => item.date))].sort().reverse();
+        days.forEach(day => {
+          const option = document.createElement("option");
+          option.value = day;
+          option.textContent = day;
+          datePicker.appendChild(option);
+        });
       }
-    });
-  });
+      if (datePicker.options.length > 0) {
+        datePicker.value = datePicker.options[0].value;
+      }
+    }
 
-  // 編輯功能
-  document.querySelectorAll(".edit-btn").forEach(btn => {
-    btn.addEventListener("click", async e => {
-      const id = e.target.dataset.id;
-      const record = allData.find(item => item.id === id);
-      if (!record) return;
-
-      const newDate = prompt("輸入新日期 (YYYY-MM-DD)：", record.date);
-      const newType = prompt("輸入類型 (income 或 expense)：", record.type);
-      const newAmount = parseFloat(prompt("輸入金額：", record.amount));
-      const newNote = prompt("輸入備註：", record.note || "");
-
-      if (!newDate || isNaN(newAmount) || (newType !== 'income' && newType !== 'expense')) {
-        alert("❌ 輸入有誤，請重新檢查！");
+    function renderTable() {
+      const selectedDate = datePicker.value;
+      if (!selectedDate) {
+        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此期間的記錄</td></tr>`;
         return;
       }
 
-      try {
-        await db.collection("records").doc(id).update({
-          date: newDate,
-          type: newType,
-          amount: newAmount,
-          note: newNote
+      let filteredData = [];
+      if (currentFilter === 'month') {
+        filteredData = allData.filter(item => item.date.startsWith(selectedDate));
+      } else {
+        filteredData = allData.filter(item => item.date === selectedDate);
+      }
+
+      if (currentTypeFilter !== 'all') {
+        filteredData = filteredData.filter(item => {
+          if (currentTypeFilter === 'income') return item.type === 'income';
+          if (currentTypeFilter === 'expense') return item.type === 'expense';
+          return true;
         });
-        alert("✅ 已更新");
+      }
+
+      recordsTableBody.innerHTML = "";
+
+      if (filteredData.length === 0) {
+        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此期間的記錄</td></tr>`;
+        return;
+      }
+
+      filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      filteredData.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.date}</td>
+          <td>${item.type === "income" ? "收入" : "支出"}</td>
+          <td>${item.amount.toFixed(2)}</td>
+          <td>${item.note || ""}</td>
+          <td>
+            <button class="edit-btn" data-id="${item.id}">編輯</button>
+            <button class="delete-btn" data-id="${item.id}">刪除</button>
+          </td>
+        `;
+        recordsTableBody.appendChild(tr);
+      });
+
+      // 刪除按鈕監聽
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async e => {
+          const id = e.target.dataset.id;
+          if (confirm("確定要刪除這筆記錄嗎？")) {
+            try {
+              await db.collection("records").doc(id).delete();
+              alert("✅ 已刪除");
+              await loadData();
+              renderDateOptions();
+              renderTable();
+            } catch (err) {
+              alert("刪除失敗：" + err.message);
+            }
+          }
+        });
+      });
+
+      // 編輯按鈕監聽
+      document.querySelectorAll(".edit-btn").forEach(btn => {
+        btn.addEventListener("click", e => {
+          const id = e.target.dataset.id;
+          openEditModal(id);
+        });
+      });
+    }
+
+    function openEditModal(id) {
+      const item = allData.find(d => d.id === id);
+      if (!item) return alert("找不到該筆資料");
+      editingId = id;
+      editDate.value = item.date;
+      editType.value = item.type;
+      editAmount.value = item.amount;
+      editNote.value = item.note || "";
+      editModal.style.display = "flex";
+    }
+
+    function closeEditModal() {
+      editingId = null;
+      editModal.style.display = "none";
+      editForm.reset();
+    }
+
+    // 按鈕事件
+    btnMonth.addEventListener("click", () => {
+      currentFilter = 'month';
+      btnMonth.classList.add("active");
+      btnDay.classList.remove("active");
+      renderDateOptions();
+      renderTable();
+    });
+    btnDay.addEventListener("click", () => {
+      currentFilter = 'day';
+      btnDay.classList.add("active");
+      btnMonth.classList.remove("active");
+      renderDateOptions();
+      renderTable();
+    });
+
+    btnAll.addEventListener("click", () => {
+      currentTypeFilter = 'all';
+      btnAll.classList.add("active");
+      btnIncome.classList.remove("active");
+      btnExpense.classList.remove("active");
+      renderTable();
+    });
+    btnIncome.addEventListener("click", () => {
+      currentTypeFilter = 'income';
+      btnIncome.classList.add("active");
+      btnAll.classList.remove("active");
+      btnExpense.classList.remove("active");
+      renderTable();
+    });
+    btnExpense.addEventListener("click", () => {
+      currentTypeFilter = 'expense';
+      btnExpense.classList.add("active");
+      btnAll.classList.remove("active");
+      btnIncome.classList.remove("active");
+      renderTable();
+    });
+
+    datePicker.addEventListener("change", () => {
+      renderTable();
+    });
+
+    // 編輯彈窗取消按鈕
+    editCancelBtn.addEventListener("click", () => {
+      closeEditModal();
+    });
+
+    // 編輯表單送出
+    editForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!editingId) return alert("編輯時發生錯誤，找不到資料ID");
+
+      const updatedData = {
+        date: editDate.value,
+        type: editType.value,
+        amount: parseFloat(editAmount.value),
+        note: editNote.value,
+      };
+
+      try {
+        await db.collection("records").doc(editingId).update(updatedData);
+        alert("✅ 編輯成功");
+        closeEditModal();
         await loadData();
         renderDateOptions();
         renderTable();
       } catch (err) {
-        alert("❌ 更新失敗：" + err.message);
-        console.error(err);
+        alert("更新失敗：" + err.message);
       }
     });
-  });
-}
+
+    // 初始化載入
+    (async function init() {
+      await loadData();
+      renderDateOptions();
+      renderTable();
+    })();
+  </script>
+</body>
+</html>
