@@ -15,8 +15,8 @@
     
     body {
       font-family: 'Noto Sans TC', sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #e4e7f1 100%);
-      color: #333;
+      background: #121212;
+      color: #e0e0e0;
       line-height: 1.6;
       padding: 15px;
       min-height: 100vh;
@@ -31,10 +31,10 @@
       text-align: center;
       margin-bottom: 20px;
       padding: 15px;
-      background: linear-gradient(120deg, #4b6cb7 0%, #182848 100%);
+      background: linear-gradient(120deg, #1a1a2e 0%, #16213e 100%);
       border-radius: 12px;
-      color: white;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      color: #ffffff;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     }
     
     header h1 {
@@ -48,23 +48,24 @@
     }
     
     .card {
-      background: white;
+      background: #1e1e1e;
       border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
       padding: 18px;
       margin-bottom: 20px;
       transition: transform 0.3s ease;
+      border: 1px solid #333;
     }
     
     .card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
     }
     
     .card-title {
       font-size: 1.2rem;
       margin-bottom: 15px;
-      color: #2c3e50;
+      color: #ffffff;
       display: flex;
       align-items: center;
     }
@@ -91,23 +92,25 @@
       display: block;
       margin-bottom: 6px;
       font-weight: 500;
-      color: #2c3e50;
+      color: #b0b0b0;
       font-size: 0.9rem;
     }
     
     input, select {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #ddd;
+      border: 1px solid #333;
       border-radius: 6px;
       font-size: 0.9rem;
       transition: border-color 0.3s;
+      background-color: #2d2d2d;
+      color: #e0e0e0;
     }
     
     input:focus, select:focus {
       outline: none;
       border-color: #4b6cb7;
-      box-shadow: 0 0 0 3px rgba(75, 108, 183, 0.2);
+      box-shadow: 0 0 0 3px rgba(75, 108, 183, 0.3);
     }
     
     button {
@@ -127,7 +130,7 @@
     
     button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 3px 10px rgba(75, 108, 183, 0.4);
+      box-shadow: 0 3px 10px rgba(75, 108, 183, 0.6);
     }
     
     button i {
@@ -142,22 +145,23 @@
     }
     
     .stat-card {
-      background: white;
+      background: #1e1e1e;
       border-radius: 10px;
       padding: 15px;
       text-align: center;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
       transition: all 0.3s ease;
+      border: 1px solid #333;
     }
     
     .stat-card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
     }
     
     .stat-title {
       font-size: 0.8rem;
-      color: #7f8c8d;
+      color: #a0a0a0;
       margin-bottom: 8px;
     }
     
@@ -167,7 +171,7 @@
     }
     
     .income .stat-value {
-      color: #27ae60;
+      color: #2ecc71;
     }
     
     .expense .stat-value {
@@ -189,7 +193,7 @@
     
     .month-controls h2 {
       font-size: 1.4rem;
-      color: #2c3e50;
+      color: #ffffff;
       margin-right: auto;
     }
     
@@ -197,10 +201,11 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      background: white;
+      background: #1e1e1e;
       padding: 6px;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border: 1px solid #333;
     }
     
     .month-navigation button {
@@ -223,24 +228,26 @@
     
     .month-navigation input[type="month"] {
       padding: 6px 10px;
-      border: 1px solid #ddd;
+      border: 1px solid #333;
       border-radius: 5px;
       min-width: 120px;
       font-size: 0.9rem;
+      background-color: #2d2d2d;
+      color: #e0e0e0;
     }
     
     .summary {
       text-align: center;
       margin-top: 15px;
       padding: 12px;
-      background: #f8f9fa;
+      background: #252525;
       border-radius: 8px;
       border-left: 4px solid #4b6cb7;
     }
     
     .summary p {
       font-size: 0.9rem;
-      color: #2c3e50;
+      color: #b0b0b0;
     }
     
     .summary .highlight {
@@ -265,7 +272,7 @@
     
     .nav-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 3px 10px rgba(75, 108, 183, 0.4);
+      box-shadow: 0 3px 10px rgba(75, 108, 183, 0.6);
     }
     
     @media (max-width: 480px) {
@@ -381,14 +388,13 @@
     </div>
     
     <div style="display: flex; gap: 5px;">
-  <a href="analyze.html" class="nav-button">
-    <i class="fas fa-chart-bar"></i> 查看圖表分析
-  </a>
-  <a href="material.html" class="nav-button">
-    <i class="fas fa-box-open"></i> 查看材料管理
-  </a>
-</div>
-
+      <a href="analyze.html" class="nav-button">
+        <i class="fas fa-chart-bar"></i> 查看圖表分析
+      </a>
+      <a href="material.html" class="nav-button">
+        <i class="fas fa-box-open"></i> 查看材料管理
+      </a>
+    </div>
     
   </div>
 
