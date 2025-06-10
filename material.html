@@ -1,213 +1,175 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8" />
-  <title>記帳系統</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 30px auto; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; }
-    select, input, button { margin: 5px; padding: 6px; }
-    .nav-button {
-      display: block;
-      width: 200px;
-      margin: 30px auto;
-      padding: 10px;
-      background-color: #4b6cb7;
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 5px;
-      font-weight: bold;
-      transition: background-color 0.3s;
-    }
-    .nav-button:hover {
-      background-color: #3a56a0;
-    }
-    /* 新增切換按鈕樣式 */
-    .filter-toggle {
-      margin: 15px 0 5px;
-      text-align: center;
-    }
-    .filter-toggle button {
-      margin: 0 10px;
-      padding: 8px 20px;
-      font-weight: bold;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      background-color: #ccc;
-      transition: background-color 0.3s;
-    }
-    .filter-toggle button.active {
-      background-color: #4b6cb7;
-      color: white;
-    }
-  </style>
-</head>
-<body>
-  <h2>記帳系統</h2>
+<script>
+  // Firebase 設定
+  const firebaseConfig = {
+    apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
+    authDomain: "project-1743045136631756226.firebaseapp.com",
+    projectId: "project-1743045136631756226",
+    storageBucket: "project-1743045136631756226.appspot.com",
+    messagingSenderId: "660576126542",
+    appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
+    measurementId: "G-31VC1RK1HK"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-  <div class="filter-toggle">
-    <button id="btnMonth" class="active">按月</button>
-    <button id="btnDay">按日</button>
-  </div>
+  const btnMonth = document.getElementById("btnMonth");
+  const btnDay = document.getElementById("btnDay");
+  const datePicker = document.getElementById("datePicker");
+  const recordsTableBody = document.getElementById("recordsTableBody");
 
-  <label for="datePicker">選擇月份：</label>
-  <select id="datePicker"></select>
+  // 新增收入/支出過濾按鈕元素
+  const btnIncome = document.getElementById("btnIncome");
+  const btnExpense = document.getElementById("btnExpense");
 
-  <table>
-    <thead>
-      <tr>
-        <th>日期</th>
-        <th>類型</th>
-        <th>金額</th>
-        <th>備註</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody id="recordsTableBody"></tbody>
-  </table>
+  let allData = [];
+  let currentFilter = 'month'; // 'month' 或 'day'
+  let currentTypeFilter = 'income'; // 'income' 或 'expense'
 
-  <a href="index.html" class="nav-button">返回財務分析面板</a>
+  async function loadData() {
+    const snapshot = await db.collection("records").get();
+    allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
 
-  <script>
-    // Firebase 設定
-    const firebaseConfig = {
-      apiKey: "AIzaSyDEOsfYrAGpAnYsiYyBpaYCC-EFL9dnL6k",
-      authDomain: "project-1743045136631756226.firebaseapp.com",
-      projectId: "project-1743045136631756226",
-      storageBucket: "project-1743045136631756226.appspot.com",
-      messagingSenderId: "660576126542",
-      appId: "1:660576126542:web:ff0f574ec65385b7fa251f",
-      measurementId: "G-31VC1RK1HK"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  function renderDateOptions() {
+    datePicker.innerHTML = "";
+    let filteredByType = allData.filter(item => {
+      if (currentTypeFilter === 'income') return item.type === 'income';
+      else return item.type === 'expense';
+    });
 
-    const btnMonth = document.getElementById("btnMonth");
-    const btnDay = document.getElementById("btnDay");
-    const datePicker = document.getElementById("datePicker");
-    const recordsTableBody = document.getElementById("recordsTableBody");
-
-    let allData = [];
-    let currentFilter = 'month'; // 'month' 或 'day'
-
-    async function loadData() {
-      const snapshot = await db.collection("records").get();
-      allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-
-    function renderDateOptions() {
-      datePicker.innerHTML = "";
-      if (currentFilter === 'month') {
-        // 取出所有不同月份 (YYYY-MM)
-        const months = [...new Set(allData.map(item => item.date.slice(0, 7)))].sort().reverse();
-        months.forEach(month => {
-          const option = document.createElement("option");
-          option.value = month;
-          option.textContent = month;
-          datePicker.appendChild(option);
-        });
-      } else {
-        // 按日 - 取出所有不同日期 (YYYY-MM-DD)
-        const days = [...new Set(allData.map(item => item.date))].sort().reverse();
-        days.forEach(day => {
-          const option = document.createElement("option");
-          option.value = day;
-          option.textContent = day;
-          datePicker.appendChild(option);
-        });
-      }
-    }
-
-    function renderTable() {
-      const selectedDate = datePicker.value;
-      if (!selectedDate) return;
-
-      let filteredData = [];
-      if (currentFilter === 'month') {
-        filteredData = allData.filter(item => item.date.startsWith(selectedDate));
-      } else {
-        filteredData = allData.filter(item => item.date === selectedDate);
-      }
-
-      recordsTableBody.innerHTML = "";
-
-      if (filteredData.length === 0) {
-        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此期間的記錄</td></tr>`;
-        return;
-      }
-
-      filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      filteredData.forEach(item => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${item.date}</td>
-          <td>${item.type === "income" ? "收入" : "支出"}</td>
-          <td>${item.amount.toFixed(2)}</td>
-          <td>${item.note || ""}</td>
-          <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
-        `;
-        recordsTableBody.appendChild(tr);
+    if (currentFilter === 'month') {
+      // 取出所有不同月份 (YYYY-MM)
+      const months = [...new Set(filteredByType.map(item => item.date.slice(0, 7)))].sort().reverse();
+      months.forEach(month => {
+        const option = document.createElement("option");
+        option.value = month;
+        option.textContent = month;
+        datePicker.appendChild(option);
       });
+    } else {
+      // 按日 - 取出所有不同日期 (YYYY-MM-DD)
+      const days = [...new Set(filteredByType.map(item => item.date))].sort().reverse();
+      days.forEach(day => {
+        const option = document.createElement("option");
+        option.value = day;
+        option.textContent = day;
+        datePicker.appendChild(option);
+      });
+    }
+  }
 
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async e => {
-          const id = e.target.dataset.id;
-          if (confirm("確定要刪除這筆記錄嗎？")) {
-            try {
-              await db.collection("records").doc(id).delete();
-              alert("✅ 已刪除");
-              await loadData();
-              renderDateOptions();
-              renderTable();
-            } catch (err) {
-              alert("❌ 刪除失敗：" + err.message);
-              console.error(err);
-            }
+  function renderTable() {
+    const selectedDate = datePicker.value;
+    if (!selectedDate) {
+      recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此期間的記錄</td></tr>`;
+      return;
+    }
+
+    let filteredData = allData.filter(item => {
+      // 先過濾類型
+      if (currentTypeFilter === 'income' && item.type !== 'income') return false;
+      if (currentTypeFilter === 'expense' && item.type !== 'expense') return false;
+
+      // 再過濾日期
+      if (currentFilter === 'month') {
+        return item.date.startsWith(selectedDate);
+      } else {
+        return item.date === selectedDate;
+      }
+    });
+
+    recordsTableBody.innerHTML = "";
+
+    if (filteredData.length === 0) {
+      recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此期間的記錄</td></tr>`;
+      return;
+    }
+
+    filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    filteredData.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.date}</td>
+        <td>${item.type === "income" ? "收入" : "支出"}</td>
+        <td>${item.amount.toFixed(2)}</td>
+        <td>${item.note || ""}</td>
+        <td><button class="delete-btn" data-id="${item.id}">刪除</button></td>
+      `;
+      recordsTableBody.appendChild(tr);
+    });
+
+    document.querySelectorAll(".delete-btn").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        const id = e.target.dataset.id;
+        if (confirm("確定要刪除這筆記錄嗎？")) {
+          try {
+            await db.collection("records").doc(id).delete();
+            alert("✅ 已刪除");
+            await loadData();
+            renderDateOptions();
+            renderTable();
+          } catch (err) {
+            alert("❌ 刪除失敗：" + err.message);
+            console.error(err);
           }
-        });
+        }
       });
-    }
-
-    btnMonth.addEventListener("click", () => {
-      if (currentFilter !== 'month') {
-        currentFilter = 'month';
-        btnMonth.classList.add("active");
-        btnDay.classList.remove("active");
-        document.querySelector("label[for='datePicker']").textContent = "選擇月份：";
-        renderDateOptions();
-        renderTable();
-      }
     });
+  }
 
-    btnDay.addEventListener("click", () => {
-      if (currentFilter !== 'day') {
-        currentFilter = 'day';
-        btnDay.classList.add("active");
-        btnMonth.classList.remove("active");
-        document.querySelector("label[for='datePicker']").textContent = "選擇日期：";
-        renderDateOptions();
-        renderTable();
-      }
-    });
-
-    datePicker.addEventListener("change", () => {
-      renderTable();
-    });
-
-    async function init() {
-      await loadData();
+  btnMonth.addEventListener("click", () => {
+    if (currentFilter !== 'month') {
+      currentFilter = 'month';
+      btnMonth.classList.add("active");
+      btnDay.classList.remove("active");
+      document.querySelector("label[for='datePicker']").textContent = "選擇月份：";
       renderDateOptions();
       renderTable();
     }
+  });
 
-    init();
-  </script>
-</body>
-</html>
+  btnDay.addEventListener("click", () => {
+    if (currentFilter !== 'day') {
+      currentFilter = 'day';
+      btnDay.classList.add("active");
+      btnMonth.classList.remove("active");
+      document.querySelector("label[for='datePicker']").textContent = "選擇日期：";
+      renderDateOptions();
+      renderTable();
+    }
+  });
+
+  // 收入支出切換按鈕事件
+  btnIncome.addEventListener("click", () => {
+    if (currentTypeFilter !== 'income') {
+      currentTypeFilter = 'income';
+      btnIncome.classList.add("active");
+      btnExpense.classList.remove("active");
+      renderDateOptions();
+      renderTable();
+    }
+  });
+
+  btnExpense.addEventListener("click", () => {
+    if (currentTypeFilter !== 'expense') {
+      currentTypeFilter = 'expense';
+      btnExpense.classList.add("active");
+      btnIncome.classList.remove("active");
+      renderDateOptions();
+      renderTable();
+    }
+  });
+
+  datePicker.addEventListener("change", () => {
+    renderTable();
+  });
+
+  async function init() {
+    await loadData();
+    renderDateOptions();
+    renderTable();
+  }
+
+  init();
+</script>
