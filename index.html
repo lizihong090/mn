@@ -587,7 +587,7 @@
       const totalIncome = allData
         .filter(d => d.type === 'income')
         .reduce((acc, cur) => acc + cur.amount, 0);
-      totalIncomeEl.textContent = totalIncome.toFixed(2);
+      totalIncomeEl.textContent = Math.round(totalIncome);
 
       const selectedMonth = monthPicker.value;
       if (!selectedMonth) return;
@@ -615,9 +615,9 @@
       const monthBalance = monthIncome - monthExpense;
       const ratio = monthIncome > 0 ? (monthExpense / monthIncome * 100).toFixed(1) : 0;
 
-      monthIncomeEl.textContent = monthIncome.toFixed(2);
-      monthExpenseEl.textContent = monthExpense.toFixed(2);
-      monthBalanceEl.textContent = monthBalance.toFixed(2);
+      monthIncomeEl.textContent = Math.round(monthIncome);
+      monthExpenseEl.textContent = Math.round(monthExpense);
+      monthBalanceEl.textContent = Math.round(monthBalance);
       expenseRatioEl.textContent = `${ratio}%`;
     }
 
@@ -756,7 +756,7 @@
                   if (label) {
                     label += ': ';
                   }
-                  label += context.raw.toFixed(2);
+                  label += Math.round(context.raw);
                   return label;
                 }
               }
@@ -906,7 +906,7 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return `${context.label}: ${context.raw.toFixed(2)}`;
+                  return `${context.label}: ${Math.round(context.raw)}`;
                 }
               }
             }
