@@ -5,14 +5,13 @@
   <title>記帳系統</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: sans-serif; max-width: 800px; margin: 30px auto; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #f2f2f2; }
     select, input, button { margin: 5px; padding: 6px; }
-    #chart { max-height: 300px; margin-top: 30px; }
+    /* #chart { max-height: 300px; margin-top: 30px; }  移除相關樣式 */
     /* 新增的按鈕樣式 */
     .nav-button {
       display: block;
@@ -51,7 +50,8 @@
     <tbody id="recordsTableBody"></tbody>
   </table>
 
-  <canvas id="chart"></canvas>
+  <!-- 移除 canvas 元素，不顯示圖表 -->
+  <!-- <canvas id="chart"></canvas> -->
 
   <!-- 新增的導航按鈕 -->
   <a href="index.html" class="nav-button">返回財務分析面板</a>
@@ -73,7 +73,7 @@
     const monthPicker = document.getElementById("monthPicker");
     const recordsTableBody = document.getElementById("recordsTableBody");
     let allData = [];
-    let chartInstance;
+    // let chartInstance;  // 移除圖表相關變數
 
     async function loadData() {
       const snapshot = await db.collection("records").get();
@@ -127,7 +127,7 @@
               await loadData();
               renderMonthOptions();
               renderTable();
-              renderChart();
+              // renderChart(); // 移除圖表刷新呼叫
             } catch (err) {
               alert("❌ 刪除失敗：" + err.message);
               console.error(err);
@@ -137,6 +137,8 @@
       });
     }
 
+    // 移除整個 renderChart 函式
+    /*
     function renderChart() {
       const selectedMonth = monthPicker.value;
       if (!selectedMonth) return;
@@ -168,17 +170,18 @@
         }
       });
     }
+    */
 
     monthPicker.addEventListener("change", () => {
       renderTable();
-      renderChart();
+      // renderChart();  // 移除圖表刷新呼叫
     });
 
     async function init() {
       await loadData();
       renderMonthOptions();
       renderTable();
-      renderChart();
+      // renderChart();  // 移除圖表初始化呼叫
     }
 
     init();
