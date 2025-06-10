@@ -11,8 +11,6 @@
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #f2f2f2; }
     select, input, button { margin: 5px; padding: 6px; }
-    /* #chart { max-height: 300px; margin-top: 30px; }  移除相關樣式 */
-    /* 新增的按鈕樣式 */
     .nav-button {
       display: block;
       width: 200px;
@@ -29,13 +27,37 @@
     .nav-button:hover {
       background-color: #3a56a0;
     }
+    /* 新增切換按鈕樣式 */
+    .filter-toggle {
+      margin: 15px 0 5px;
+      text-align: center;
+    }
+    .filter-toggle button {
+      margin: 0 10px;
+      padding: 8px 20px;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #ccc;
+      transition: background-color 0.3s;
+    }
+    .filter-toggle button.active {
+      background-color: #4b6cb7;
+      color: white;
+    }
   </style>
 </head>
 <body>
   <h2>記帳系統</h2>
 
-  <label for="monthPicker">選擇月份：</label>
-  <select id="monthPicker"></select>
+  <div class="filter-toggle">
+    <button id="btnMonth" class="active">按月</button>
+    <button id="btnDay">按日</button>
+  </div>
+
+  <label for="datePicker">選擇月份：</label>
+  <select id="datePicker"></select>
 
   <table>
     <thead>
@@ -50,10 +72,6 @@
     <tbody id="recordsTableBody"></tbody>
   </table>
 
-  <!-- 移除 canvas 元素，不顯示圖表 -->
-  <!-- <canvas id="chart"></canvas> -->
-
-  <!-- 新增的導航按鈕 -->
   <a href="index.html" class="nav-button">返回財務分析面板</a>
 
   <script>
@@ -70,36 +88,57 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const monthPicker = document.getElementById("monthPicker");
+    const btnMonth = document.getElementById("btnMonth");
+    const btnDay = document.getElementById("btnDay");
+    const datePicker = document.getElementById("datePicker");
     const recordsTableBody = document.getElementById("recordsTableBody");
+
     let allData = [];
-    // let chartInstance;  // 移除圖表相關變數
+    let currentFilter = 'month'; // 'month' 或 'day'
 
     async function loadData() {
       const snapshot = await db.collection("records").get();
       allData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
-    function renderMonthOptions() {
-      const months = [...new Set(allData.map(item => item.date.slice(0, 7)))].sort().reverse();
-      monthPicker.innerHTML = "";
-      months.forEach(month => {
-        const option = document.createElement("option");
-        option.value = month;
-        option.textContent = month;
-        monthPicker.appendChild(option);
-      });
+    function renderDateOptions() {
+      datePicker.innerHTML = "";
+      if (currentFilter === 'month') {
+        // 取出所有不同月份 (YYYY-MM)
+        const months = [...new Set(allData.map(item => item.date.slice(0, 7)))].sort().reverse();
+        months.forEach(month => {
+          const option = document.createElement("option");
+          option.value = month;
+          option.textContent = month;
+          datePicker.appendChild(option);
+        });
+      } else {
+        // 按日 - 取出所有不同日期 (YYYY-MM-DD)
+        const days = [...new Set(allData.map(item => item.date))].sort().reverse();
+        days.forEach(day => {
+          const option = document.createElement("option");
+          option.value = day;
+          option.textContent = day;
+          datePicker.appendChild(option);
+        });
+      }
     }
 
     function renderTable() {
-      const selectedMonth = monthPicker.value;
-      if (!selectedMonth) return;
+      const selectedDate = datePicker.value;
+      if (!selectedDate) return;
 
-      const filteredData = allData.filter(item => item.date.startsWith(selectedMonth));
+      let filteredData = [];
+      if (currentFilter === 'month') {
+        filteredData = allData.filter(item => item.date.startsWith(selectedDate));
+      } else {
+        filteredData = allData.filter(item => item.date === selectedDate);
+      }
+
       recordsTableBody.innerHTML = "";
 
       if (filteredData.length === 0) {
-        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此月份的記錄</td></tr>`;
+        recordsTableBody.innerHTML = `<tr><td colspan="5">目前無此期間的記錄</td></tr>`;
         return;
       }
 
@@ -125,9 +164,8 @@
               await db.collection("records").doc(id).delete();
               alert("✅ 已刪除");
               await loadData();
-              renderMonthOptions();
+              renderDateOptions();
               renderTable();
-              // renderChart(); // 移除圖表刷新呼叫
             } catch (err) {
               alert("❌ 刪除失敗：" + err.message);
               console.error(err);
@@ -137,51 +175,36 @@
       });
     }
 
-    // 移除整個 renderChart 函式
-    /*
-    function renderChart() {
-      const selectedMonth = monthPicker.value;
-      if (!selectedMonth) return;
+    btnMonth.addEventListener("click", () => {
+      if (currentFilter !== 'month') {
+        currentFilter = 'month';
+        btnMonth.classList.add("active");
+        btnDay.classList.remove("active");
+        document.querySelector("label[for='datePicker']").textContent = "選擇月份：";
+        renderDateOptions();
+        renderTable();
+      }
+    });
 
-      const filteredData = allData.filter(item => item.date.startsWith(selectedMonth));
-      const income = filteredData.filter(i => i.type === "income").reduce((sum, i) => sum + i.amount, 0);
-      const expense = filteredData.filter(i => i.type === "expense").reduce((sum, i) => sum + i.amount, 0);
+    btnDay.addEventListener("click", () => {
+      if (currentFilter !== 'day') {
+        currentFilter = 'day';
+        btnDay.classList.add("active");
+        btnMonth.classList.remove("active");
+        document.querySelector("label[for='datePicker']").textContent = "選擇日期：";
+        renderDateOptions();
+        renderTable();
+      }
+    });
 
-      const ctx = document.getElementById("chart").getContext("2d");
-
-      if (chartInstance) chartInstance.destroy();
-      chartInstance = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: ["收入", "支出"],
-          datasets: [{
-            label: "金額",
-            data: [income, expense],
-            backgroundColor: ["#4caf50", "#f44336"]
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
-        }
-      });
-    }
-    */
-
-    monthPicker.addEventListener("change", () => {
+    datePicker.addEventListener("change", () => {
       renderTable();
-      // renderChart();  // 移除圖表刷新呼叫
     });
 
     async function init() {
       await loadData();
-      renderMonthOptions();
+      renderDateOptions();
       renderTable();
-      // renderChart();  // 移除圖表初始化呼叫
     }
 
     init();
