@@ -291,6 +291,37 @@
       box-shadow: 0 3px 10px rgba(75, 108, 183, 0.4);
     }
     
+    .chart-period-selector {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+      gap: 5px;
+    }
+    
+    .chart-period-selector button {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      background: #e0e0e0;
+      color: #333;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .chart-period-selector button.active {
+      background: #4b6cb7;
+      color: white;
+    }
+    
+    .chart-period-selector button:hover {
+      background: #d0d0d0;
+    }
+    
+    .chart-period-selector button.active:hover {
+      background: #3a5a9c;
+    }
+    
     @media (max-width: 480px) {
       .chart-container {
         height: 220px;
@@ -324,6 +355,15 @@
       .nav-button {
         width: 160px;
         padding: 8px 15px;
+      }
+      
+      .chart-period-selector {
+        justify-content: center;
+      }
+      
+      .chart-period-selector button {
+        padding: 5px 8px;
+        font-size: 0.7rem;
       }
     }
   </style>
@@ -408,7 +448,14 @@
     </div>
     
     <div class="card">
-      <h2 class="card-title"><i class="fas fa-chart-bar"></i> 每日收支與累積淨值</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 class="card-title"><i class="fas fa-chart-bar"></i> 收支與累積淨值</h2>
+        <div class="chart-period-selector">
+          <button id="dailyBtn" class="active">日</button>
+          <button id="weeklyBtn">週</button>
+          <button id="monthlyBtn">月</button>
+        </div>
+      </div>
       <div class="chart-container">
         <canvas id="combinedChart"></canvas>
       </div>
@@ -456,6 +503,9 @@
     const monthExpenseEl = document.getElementById("monthExpense");
     const monthBalanceEl = document.getElementById("monthBalance");
     const expenseRatioEl = document.getElementById("expenseRatio");
+    const dailyBtn = document.getElementById("dailyBtn");
+    const weeklyBtn = document.getElementById("weeklyBtn");
+    const monthlyBtn = document.getElementById("monthlyBtn");
     
     // 圖表上下文
     const combinedCtx = document.getElementById("combinedChart").getContext('2d');
@@ -463,6 +513,7 @@
 
     let allData = [];
     let combinedChart, distributionChart;
+    let currentPeriod = 'daily'; // 預設為日視圖
 
     // 設置預設月份為當前月
     const today = new Date();
@@ -509,7 +560,7 @@
       });
     }
 
-    // 計算指定月份之前的累積淨值（收入-支出）
+    // 計算指定日期之前的累積淨值（收入-支出）
     async function getPreviousCumulativeBalance(endDate) {
       const snapshot = await getDocs(colRef);
       let total = 0;
@@ -558,6 +609,37 @@
       monthPicker.value = currentDate.toISOString().slice(0,7);
       renderCharts();
     });
+
+    // 切換日視圖
+    dailyBtn.addEventListener("click", () => {
+      if (currentPeriod === 'daily') return;
+      currentPeriod = 'daily';
+      updatePeriodButtons();
+      renderCombinedChart();
+    });
+
+    // 切換週視圖
+    weeklyBtn.addEventListener("click", () => {
+      if (currentPeriod === 'weekly') return;
+      currentPeriod = 'weekly';
+      updatePeriodButtons();
+      renderCombinedChart();
+    });
+
+    // 切換月視圖
+    monthlyBtn.addEventListener("click", () => {
+      if (currentPeriod === 'monthly') return;
+      currentPeriod = 'monthly';
+      updatePeriodButtons();
+      renderCombinedChart();
+    });
+
+    // 更新週期按鈕狀態
+    function updatePeriodButtons() {
+      dailyBtn.classList.toggle('active', currentPeriod === 'daily');
+      weeklyBtn.classList.toggle('active', currentPeriod === 'weekly');
+      monthlyBtn.classList.toggle('active', currentPeriod === 'monthly');
+    }
 
     // 頁面初始化
     (async function init() {
@@ -669,31 +751,98 @@
       // 計算上個月之前的累積淨值
       const previousCumulative = await getPreviousCumulativeBalance(monthStartDate);
 
-      // 初始化每日數據
-      const dailyIncome = Array(daysCount).fill(0);
-      const dailyExpense = Array(daysCount).fill(0);
-      const cumulativeBalance = Array(daysCount).fill(0);
+      let labels = [];
+      let dailyIncome = [];
+      let dailyExpense = [];
+      let cumulativeBalance = [];
       let cumulativeSum = previousCumulative; // 從上個月的累積開始
 
-      // 計算每日收入和支出
-      for (let day = 1; day <= daysCount; day++) {
-        const dateStr = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayData = monthData.filter(item => item.date === dateStr);
-        
-        // 計算每日收入與支出
-        const dayIncome = dayData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
-        const dayExpense = dayData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
-        
-        dailyIncome[day - 1] = dayIncome;
-        dailyExpense[day - 1] = dayExpense;
-        
-        // 計算累積淨值（收入增加，支出減少）
-        cumulativeSum += (dayIncome - dayExpense);
-        cumulativeBalance[day - 1] = cumulativeSum;
-      }
+      if (currentPeriod === 'daily') {
+        // 日視圖 - 顯示每日數據
+        labels = Array.from({length: daysCount}, (_, i) => i + 1);
+        dailyIncome = Array(daysCount).fill(0);
+        dailyExpense = Array(daysCount).fill(0);
+        cumulativeBalance = Array(daysCount).fill(0);
 
-      // 生成標籤 (1, 2, 3, ...)
-      const labels = Array.from({length: daysCount}, (_, i) => i + 1);
+        // 計算每日收入和支出
+        for (let day = 1; day <= daysCount; day++) {
+          const dateStr = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dayData = monthData.filter(item => item.date === dateStr);
+          
+          // 計算每日收入與支出
+          const dayIncome = dayData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
+          const dayExpense = dayData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
+          
+          dailyIncome[day - 1] = dayIncome;
+          dailyExpense[day - 1] = dayExpense;
+          
+          // 計算累積淨值（收入增加，支出減少）
+          cumulativeSum += (dayIncome - dayExpense);
+          cumulativeBalance[day - 1] = cumulativeSum;
+        }
+      } else if (currentPeriod === 'weekly') {
+        // 週視圖 - 按週分組
+        const weeks = [];
+        let currentWeekStart = new Date(monthStartDate);
+        
+        // 找出當月所有週的起始日
+        while (currentWeekStart <= monthEndDate) {
+          weeks.push(new Date(currentWeekStart));
+          currentWeekStart = new Date(currentWeekStart);
+          currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        }
+        
+        // 初始化每週數據
+        const weeklyIncome = Array(weeks.length).fill(0);
+        const weeklyExpense = Array(weeks.length).fill(0);
+        const weeklyCumulative = Array(weeks.length).fill(0);
+        
+        // 計算每週數據
+        for (let i = 0; i < weeks.length; i++) {
+          const weekStart = new Date(weeks[i]);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          if (weekEnd > monthEndDate) weekEnd = new Date(monthEndDate);
+          
+          // 篩選本週數據
+          const weekData = monthData.filter(item => {
+            const d = new Date(item.date);
+            return d >= weekStart && d <= weekEnd;
+          });
+          
+          // 計算本週收入與支出
+          const weekIncome = weekData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
+          const weekExpense = weekData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
+          
+          weeklyIncome[i] = weekIncome;
+          weeklyExpense[i] = weekExpense;
+          
+          // 計算累積淨值
+          cumulativeSum += (weekIncome - weekExpense);
+          weeklyCumulative[i] = cumulativeSum;
+          
+          // 生成標籤 (第1週, 第2週...)
+          labels.push(`第${i+1}週`);
+        }
+        
+        dailyIncome = weeklyIncome;
+        dailyExpense = weeklyExpense;
+        cumulativeBalance = weeklyCumulative;
+      } else {
+        // 月視圖 - 顯示整月數據
+        labels = [monthStartDate.toLocaleDateString('zh-TW', { month: 'long' })];
+        
+        // 計算整月收入與支出
+        const monthIncome = monthData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
+        const monthExpense = monthData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
+        
+        dailyIncome = [monthIncome];
+        dailyExpense = [monthExpense];
+        
+        // 計算累積淨值
+        cumulativeSum += (monthIncome - monthExpense);
+        cumulativeBalance = [cumulativeSum];
+      }
 
       // 創建組合圖表
       combinedChart = new Chart(combinedCtx, {
@@ -702,7 +851,7 @@
           labels,
           datasets: [
             {
-              label: '每日收入',
+              label: currentPeriod === 'daily' ? '每日收入' : currentPeriod === 'weekly' ? '每週收入' : '每月收入',
               data: dailyIncome,
               backgroundColor: 'rgba(39, 174, 96, 0.7)',
               borderColor: '#27ae60',
@@ -710,7 +859,7 @@
               yAxisID: 'y'
             },
             {
-              label: '每日支出',
+              label: currentPeriod === 'daily' ? '每日支出' : currentPeriod === 'weekly' ? '每週支出' : '每月支出',
               data: dailyExpense,
               backgroundColor: 'rgba(231, 76, 60, 0.7)',
               borderColor: '#e74c3c',
@@ -744,7 +893,8 @@
           plugins: {
             title: {
               display: true,
-              text: '每日收支與累積淨值',
+              text: currentPeriod === 'daily' ? '每日收支與累積淨值' : 
+                    currentPeriod === 'weekly' ? '每週收支與累積淨值' : '每月收支與累積淨值',
               font: {
                 size: window.innerWidth < 480 ? 12 : 14
               }
@@ -779,7 +929,8 @@
               position: 'left',
               title: {
                 display: window.innerWidth > 480,
-                text: '每日收支',
+                text: currentPeriod === 'daily' ? '每日收支' : 
+                      currentPeriod === 'weekly' ? '每週收支' : '每月收支',
                 font: {
                   size: 10
                 }
@@ -815,7 +966,8 @@
             x: {
               title: {
                 display: window.innerWidth > 480,
-                text: '日期',
+                text: currentPeriod === 'daily' ? '日期' : 
+                      currentPeriod === 'weekly' ? '週次' : '月份',
                 font: {
                   size: 10
                 }
