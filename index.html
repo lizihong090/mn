@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>財務管理系統 - 圖表分析</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>財務管理系統 - 記錄管理</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -179,28 +178,6 @@
       color: #3498db;
     }
     
-    .chart-container {
-      height: 280px;
-      position: relative;
-      margin: 15px 0;
-    }
-    
-    .charts-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-    
-    .chart-wrapper {
-      flex: 1;
-      min-width: 0;
-      background: white;
-      border-radius: 12px;
-      padding: 15px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-    }
-    
     .month-controls {
       display: flex;
       justify-content: space-between;
@@ -292,10 +269,6 @@
     }
     
     @media (max-width: 480px) {
-      .chart-container {
-        height: 220px;
-      }
-      
       .card-title {
         font-size: 1.1rem;
       }
@@ -407,28 +380,14 @@
       <p>當月財務健康度: <span class="highlight">良好</span> | 支出佔收入比例: <span id="expenseRatio">0%</span></p>
     </div>
     
-    <div class="card">
-      <h2 class="card-title"><i class="fas fa-chart-bar"></i> 每日收支與累積淨值</h2>
-      <div class="chart-container">
-        <canvas id="combinedChart"></canvas>
-      </div>
-    </div>
-    
-    <div class="chart-wrapper">
-      <h3><i class="fas fa-chart-pie"></i> 收支類型分佈</h3>
-      <div class="chart-container">
-        <canvas id="distributionChart"></canvas>
-      </div>
-    </div>
-    
-    <a href="material.html" class="nav-button">
-      <i class="fas fa-box-open"></i> 查看材料管理
+    <a href="charts.html" class="nav-button">
+      <i class="fas fa-chart-bar"></i> 查看圖表分析
     </a>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     // Firebase配置
     const firebaseConfig = {
@@ -456,13 +415,8 @@
     const monthExpenseEl = document.getElementById("monthExpense");
     const monthBalanceEl = document.getElementById("monthBalance");
     const expenseRatioEl = document.getElementById("expenseRatio");
-    
-    // 圖表上下文
-    const combinedCtx = document.getElementById("combinedChart").getContext('2d');
-    const distributionCtx = document.getElementById("distributionChart").getContext('2d');
 
     let allData = [];
-    let combinedChart, distributionChart;
 
     // 設置預設月份為當前月
     const today = new Date();
@@ -487,7 +441,7 @@
         alert("✅ 記錄新增成功！");
         form.reset();
         await loadData();
-        renderCharts();
+        updateFinancialSummary();
       } catch (err) {
         alert("❌ 新增失敗：" + err.message);
         console.error(err);
@@ -509,30 +463,9 @@
       });
     }
 
-    // 計算指定月份之前的累積淨值（收入-支出）
-    async function getPreviousCumulativeBalance(endDate) {
-      const snapshot = await getDocs(colRef);
-      let total = 0;
-      
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const recordDate = new Date(data.date);
-        
-        if (recordDate < endDate) {
-          if (data.type === 'income') {
-            total += Number(data.amount);
-          } else {
-            total -= Number(data.amount);
-          }
-        }
-      });
-      
-      return total;
-    }
-
     // 月份選擇事件
     monthPicker.addEventListener("change", () => {
-      renderCharts();
+      updateFinancialSummary();
     });
 
     // 上個月按鈕點擊事件
@@ -540,7 +473,7 @@
       const currentDate = new Date(monthPicker.value + "-01");
       currentDate.setMonth(currentDate.getMonth() - 1);
       monthPicker.value = currentDate.toISOString().slice(0,7);
-      renderCharts();
+      updateFinancialSummary();
     });
 
     // 下個月按鈕點擊事件
@@ -556,21 +489,8 @@
       }
       
       monthPicker.value = currentDate.toISOString().slice(0,7);
-      renderCharts();
-    });
-
-    // 頁面初始化
-    (async function init() {
-      await loadData();
-      renderCharts();
-    })();
-
-    // 渲染所有圖表
-    function renderCharts() {
-      renderCombinedChart();
-      renderDistributionChart();
       updateFinancialSummary();
-    }
+    });
 
     // 更新財務摘要信息
     function updateFinancialSummary() {
@@ -621,299 +541,11 @@
       expenseRatioEl.textContent = `${ratio}%`;
     }
 
-    // 渲染合併圖表（柱狀圖+折線圖）
-    async function renderCombinedChart() {
-      if (combinedChart) combinedChart.destroy();
-      
-      if (!allData.length) {
-        combinedChart = new Chart(combinedCtx, {
-          type: 'bar',
-          data: { datasets: [] },
-          options: { 
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'top',
-                labels: {
-                  boxWidth: 12,
-                  padding: 5,
-                  font: {
-                    size: window.innerWidth < 480 ? 10 : 12
-                  }
-                }
-              }
-            }
-          }
-        });
-        return;
-      }
-
-      const selectedMonth = monthPicker.value;
-      if (!selectedMonth) return;
-
-      const [year, month] = selectedMonth.split('-');
-      const selectedYear = parseInt(year);
-      const selectedMonthNum = parseInt(month);
-
-      // 篩選當月數據
-      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
-      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
-      const daysCount = monthEndDate.getDate();
-
-      const monthData = allData.filter(item => {
-        const d = new Date(item.date);
-        return d >= monthStartDate && d <= monthEndDate;
-      });
-
-      // 計算上個月之前的累積淨值
-      const previousCumulative = await getPreviousCumulativeBalance(monthStartDate);
-
-      // 初始化每日數據
-      const dailyIncome = Array(daysCount).fill(0);
-      const dailyExpense = Array(daysCount).fill(0);
-      const cumulativeBalance = Array(daysCount).fill(0);
-      let cumulativeSum = previousCumulative; // 從上個月的累積開始
-
-      // 計算每日收入和支出
-      for (let day = 1; day <= daysCount; day++) {
-        const dateStr = `${year}-${month.padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayData = monthData.filter(item => item.date === dateStr);
-        
-        // 計算每日收入與支出
-        const dayIncome = dayData.filter(d => d.type === 'income').reduce((acc, cur) => acc + cur.amount, 0);
-        const dayExpense = dayData.filter(d => d.type === 'expense').reduce((acc, cur) => acc + cur.amount, 0);
-        
-        dailyIncome[day - 1] = dayIncome;
-        dailyExpense[day - 1] = dayExpense;
-        
-        // 計算累積淨值（收入增加，支出減少）
-        cumulativeSum += (dayIncome - dayExpense);
-        cumulativeBalance[day - 1] = cumulativeSum;
-      }
-
-      // 生成標籤 (1, 2, 3, ...)
-      const labels = Array.from({length: daysCount}, (_, i) => i + 1);
-
-      // 創建組合圖表
-      combinedChart = new Chart(combinedCtx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: '每日收入',
-              data: dailyIncome,
-              backgroundColor: 'rgba(39, 174, 96, 0.7)',
-              borderColor: '#27ae60',
-              borderWidth: 1,
-              yAxisID: 'y'
-            },
-            {
-              label: '每日支出',
-              data: dailyExpense,
-              backgroundColor: 'rgba(231, 76, 60, 0.7)',
-              borderColor: '#e74c3c',
-              borderWidth: 1,
-              yAxisID: 'y'
-            },
-            {
-              label: '累積淨值',
-              data: cumulativeBalance,
-              type: 'line',
-              borderColor: '#3498db',
-              backgroundColor: 'rgba(52, 152, 219, 0.1)',
-              borderWidth: 2,
-              tension: 0.3,
-              fill: true,
-              yAxisID: 'y1'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          layout: {
-            padding: {
-              top: 10,
-              bottom: 10,
-              left: 5,
-              right: 5
-            }
-          },
-          plugins: {
-            title: {
-              display: true,
-              text: '每日收支與累積淨值',
-              font: {
-                size: window.innerWidth < 480 ? 12 : 14
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  label += Math.round(context.raw);
-                  return label;
-                }
-              }
-            },
-            legend: {
-              position: 'top',
-              labels: {
-                boxWidth: 12,
-                padding: 5,
-                font: {
-                  size: window.innerWidth < 480 ? 10 : 12
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              title: {
-                display: window.innerWidth > 480,
-                text: '每日收支',
-                font: {
-                  size: 10
-                }
-              },
-              beginAtZero: true,
-              ticks: {
-                font: {
-                  size: window.innerWidth < 480 ? 8 : 10
-                }
-              }
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: {
-                display: window.innerWidth > 480,
-                text: '累積淨值',
-                font: {
-                  size: 10
-                }
-              },
-              beginAtZero: false,
-              grid: {
-                drawOnChartArea: false
-              },
-              ticks: {
-                font: {
-                  size: window.innerWidth < 480 ? 8 : 10
-                }
-              }
-            },
-            x: {
-              title: {
-                display: window.innerWidth > 480,
-                text: '日期',
-                font: {
-                  size: 10
-                }
-              },
-              ticks: {
-                font: {
-                  size: window.innerWidth < 480 ? 8 : 10
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // 渲染分佈圖
-    function renderDistributionChart() {
-      if (distributionChart) distributionChart.destroy();
-      
-      if (!allData.length) {
-        distributionChart = new Chart(distributionCtx, {
-          type: 'doughnut',
-          data: { datasets: [] },
-          options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: {
-                  font: {
-                    size: window.innerWidth < 480 ? 10 : 12
-                  }
-                }
-              }
-            }
-          }
-        });
-        return;
-      }
-
-      const selectedMonth = monthPicker.value;
-      if (!selectedMonth) return;
-
-      const [year, month] = selectedMonth.split('-');
-      const selectedYear = parseInt(year);
-      const selectedMonthNum = parseInt(month);
-
-      // 篩選當月數據
-      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
-      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
-
-      const monthData = allData.filter(item => {
-        const d = new Date(item.date);
-        return d >= monthStartDate && d <= monthEndDate;
-      });
-
-      // 計算收入分類
-      const incomeData = monthData.filter(d => d.type === 'income');
-      const expenseData = monthData.filter(d => d.type === 'expense');
-
-      // 創建分佈圖表
-      distributionChart = new Chart(distributionCtx, {
-        type: 'doughnut',
-        data: {
-          labels: ['收入', '支出'],
-          datasets: [{
-            data: [
-              incomeData.reduce((acc, cur) => acc + cur.amount, 0),
-              expenseData.reduce((acc, cur) => acc + cur.amount, 0)
-            ],
-            backgroundColor: ['#27ae60', '#e74c3c'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                font: {
-                  size: window.innerWidth < 480 ? 10 : 12
-                }
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.label}: ${Math.round(context.raw)}`;
-                }
-              }
-            }
-          }
-        }
-      });
-    }
+    // 頁面初始化
+    (async function init() {
+      await loadData();
+      updateFinancialSummary();
+    })();
   </script>
 </body>
 </html>
