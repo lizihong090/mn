@@ -334,6 +334,13 @@
           </div>
           
           <div class="form-group">
+            <label for="category">項目</label>
+            <select id="category" required disabled>
+              <option value="">請先選擇類型</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
             <label for="amount">金額</label>
             <input type="number" id="amount" step="0.01" required />
           </div>
@@ -420,6 +427,8 @@
 
     // 獲取DOM元素
     const form = document.getElementById("form");
+    const typeSelect = document.getElementById("type");
+    const categorySelect = document.getElementById("category");
     const monthPicker = document.getElementById("monthPicker");
     const prevMonthBtn = document.getElementById("prevMonth");
     const nextMonthBtn = document.getElementById("nextMonth");
@@ -429,30 +438,90 @@
     const monthBalanceEl = document.getElementById("monthBalance");
     const expenseRatioEl = document.getElementById("expenseRatio");
 
+    // 項目分類選項
+    const incomeCategories = [
+      { value: "salary", text: "薪資" },
+      { value: "bonus", text: "獎金" },
+      { value: "investment", text: "投資" },
+      { value: "repayment", text: "還款" },
+      { value: "lottery", text: "彩券" },
+      { value: "interest", text: "利息" },
+      { value: "other_income", text: "其他收入" }
+    ];
+
+    const expenseCategories = [
+      { value: "food", text: "飲食" },
+      { value: "transportation", text: "交通" },
+      { value: "entertainment", text: "娛樂" },
+      { value: "shopping", text: "購物" },
+      { value: "personal", text: "個人" },
+      { value: "medical", text: "醫療" },
+      { value: "home", text: "居家" },
+      { value: "family", text: "家庭" },
+      { value: "living", text: "生活" },
+      { value: "education", text: "學習" },
+      { value: "other_expense", text: "其他支出" }
+    ];
+
     let allData = [];
 
     // 設置預設月份為當前月
     const today = new Date();
     monthPicker.value = today.toISOString().slice(0,7);
 
+    // 類型選擇變化事件
+    typeSelect.addEventListener("change", function() {
+      const selectedType = this.value;
+      categorySelect.innerHTML = '<option value="">請選擇項目</option>';
+      
+      if (selectedType === "income") {
+        categorySelect.disabled = false;
+        incomeCategories.forEach(cat => {
+          const option = document.createElement("option");
+          option.value = cat.value;
+          option.textContent = cat.text;
+          categorySelect.appendChild(option);
+        });
+      } else if (selectedType === "expense") {
+        categorySelect.disabled = false;
+        expenseCategories.forEach(cat => {
+          const option = document.createElement("option");
+          option.value = cat.value;
+          option.textContent = cat.text;
+          categorySelect.appendChild(option);
+        });
+      } else {
+        categorySelect.disabled = true;
+      }
+    });
+
     // 表單提交事件
     form.addEventListener("submit", async e => {
       e.preventDefault();
 
-      const type = document.getElementById("type").value;
+      const type = typeSelect.value;
+      const category = categorySelect.value;
       const amount = parseFloat(document.getElementById("amount").value);
       const note = document.getElementById("note").value;
       const date = document.getElementById("date").value;
 
-      if (!date || !amount || !type) {
+      if (!date || !amount || !type || !category) {
         alert("請完整填寫必填欄位");
         return;
       }
 
       try {
-        await addDoc(colRef, { type, amount, note, date });
+        await addDoc(colRef, { 
+          type, 
+          category,
+          amount, 
+          note, 
+          date,
+          createdAt: new Date().toISOString()
+        });
         alert("✅ 記錄新增成功！");
         form.reset();
+        categorySelect.disabled = true;
         await loadData();
         updateFinancialSummary();
       } catch (err) {
@@ -558,6 +627,9 @@
     (async function init() {
       await loadData();
       updateFinancialSummary();
+      
+      // 設置預設日期為今天
+      document.getElementById("date").value = today.toISOString().slice(0,10);
     })();
   </script>
 </body>
