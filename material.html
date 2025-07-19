@@ -634,13 +634,12 @@
       if (!editingId) return alert("編輯時發生錯誤，找不到資料ID");
 
       const updatedData = {
-        date: editDate.value,
-        type: editType.value,
-        item: editItem.value,
-        category: editCategory.value || null,
-        amount: parseFloat(editAmount.value),
-        note: editNote.value || null,
-      };
+      date: editDate.value,
+      type: editType.value,
+      category: editCategory.value || null,
+      amount: parseFloat(editAmount.value),
+      note: editNote.value || null,
+    };
 
       try {
         await db.collection("records").doc(editingId).update(updatedData);
