@@ -69,11 +69,10 @@
 
     /* 欄位寬度調整 */
     th:nth-child(1), td:nth-child(1) { width: 15%; } /* 日期 */
-    th:nth-child(2), td:nth-child(2) { width: 10%; } /* 類型 */
-    th:nth-child(3), td:nth-child(3) { width: 20%; } /* 項目 */
-    th:nth-child(4), td:nth-child(4) { width: 15%; } /* 金額 */
-    th:nth-child(5), td:nth-child(5) { width: 20%; } /* 備註 */
-    th:nth-child(6), td:nth-child(6) { width: 20%; } /* 操作 */
+    th:nth-child(2), td:nth-child(2) { width: 15%; } /* 類型 */
+    th:nth-child(3), td:nth-child(3) { width: 15%; } /* 金額 */
+    th:nth-child(4), td:nth-child(4) { width: 25%; } /* 備註 */
+    th:nth-child(5), td:nth-child(5) { width: 30%; } /* 操作 */
 
     /* 按鈕 */
     button {
@@ -262,7 +261,6 @@
       font-size: 0.8em;
       background-color: #4b6cb7;
       color: white;
-      margin-left: 5px;
     }
 
     /* 新增記錄按鈕 */
@@ -332,7 +330,6 @@
         <tr>
           <th>日期</th>
           <th>類型</th>
-          <th>項目</th>
           <th>金額</th>
           <th>備註</th>
           <th>操作</th>
@@ -357,10 +354,6 @@
             <option value="income">收入</option>
             <option value="expense">支出</option>
           </select>
-        </label>
-        <label>
-          項目名稱<br />
-          <input type="text" id="editItem" />
         </label>
         <label>
           分類<br />
@@ -451,7 +444,6 @@
     const editForm = document.getElementById("editForm");
     const editDate = document.getElementById("editDate");
     const editType = document.getElementById("editType");
-    const editItem = document.getElementById("editItem");
     const editCategory = document.getElementById("editCategory");
     const editAmount = document.getElementById("editAmount");
     const editNote = document.getElementById("editNote");
@@ -534,7 +526,7 @@
 
       if (filtered.length === 0) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="6" style="text-align: center;">沒有找到記錄</td>`;
+        tr.innerHTML = `<td colspan="5" style="text-align: center;">沒有找到記錄</td>`;
         recordsTableBody.appendChild(tr);
         return;
       }
@@ -544,9 +536,8 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${item.date}</td>
-          <td>${item.type === 'income' ? '收入' : '支出'}</td>
           <td>
-            ${item.item || ''}
+            ${item.type === 'income' ? '收入' : '支出'}
             ${item.category ? `<span class="category-tag">${item.category}</span>` : ''}
           </td>
           <td>${item.amount.toFixed(2)}</td>
@@ -594,7 +585,6 @@
       editingId = id;
       editDate.value = item.date;
       editType.value = item.type;
-      editItem.value = item.item || "";
       editCategory.value = item.category || "";
       editAmount.value = item.amount;
       editNote.value = item.note || "";
@@ -617,7 +607,6 @@
       
       editDate.value = `${year}-${month}-${day}`;
       editType.value = "expense";
-      editItem.value = "";
       editCategory.value = "";
       editAmount.value = "";
       editNote.value = "";
@@ -703,7 +692,6 @@
       const recordData = {
         date: editDate.value,
         type: editType.value,
-        item: editItem.value || null,
         category: editCategory.value || null,
         amount: parseFloat(editAmount.value),
         note: editNote.value || null,
