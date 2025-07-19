@@ -338,6 +338,10 @@
           </select>
         </label>
         <label>
+          項目<br />
+          <input type="text" id="editItem" required />
+        </label>
+        <label>
           分類<br />
           <select id="editCategory">
             <option value="">無分類</option>
@@ -556,14 +560,13 @@
       editDate.value = item.date;
       editType.value = item.type;
       editItem.value = item.item || "";
+      editCategory.value = item.category || "";
       editAmount.value = item.amount;
       editNote.value = item.note || "";
+      editModal.style.display = "flex";
       
       // 根據類型更新分類選項
       updateCategoryOptions(item.type);
-      editCategory.value = item.category || "";
-      
-      editModal.style.display = "flex";
     }
 
     function closeEditModal() {
