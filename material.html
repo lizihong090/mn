@@ -264,6 +264,24 @@
       color: white;
       margin-left: 5px;
     }
+
+    /* 新增記錄按鈕 */
+    .add-record-btn {
+      display: block;
+      width: 120px;
+      margin: 20px auto;
+      padding: 10px;
+      background-color: #4b6cb7;
+      color: white;
+      text-align: center;
+      border-radius: 5px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px #000000cc;
+      transition: background-color 0.3s;
+    }
+    .add-record-btn:hover {
+      background-color: #3a56a0;
+    }
   </style>
 </head>
 <body>
@@ -272,6 +290,9 @@
 
   <div class="main-container">
     <h2 style="color:#ffffff; text-align: center;">記帳系統</h2>
+
+    <!-- 新增記錄按鈕 -->
+    <a href="#" id="addRecordBtn" class="add-record-btn">＋ 新增記錄</a>
 
     <div class="filter-toggle">
       <button id="btnMonth" class="active">按月查看</button>
@@ -321,10 +342,10 @@
     </table>
   </div>
 
-  <!-- 編輯彈窗 Modal -->
+  <!-- 新增/編輯彈窗 Modal -->
   <div id="editModal">
     <div>
-      <h3>編輯記錄</h3>
+      <h3 id="modalTitle">編輯記錄</h3>
       <form id="editForm">
         <label>
           日期 (YYYY-MM-DD)<br />
@@ -336,6 +357,10 @@
             <option value="income">收入</option>
             <option value="expense">支出</option>
           </select>
+        </label>
+        <label>
+          項目名稱<br />
+          <input type="text" id="editItem" />
         </label>
         <label>
           分類<br />
@@ -405,6 +430,7 @@
     let currentFilter = 'month'; // month 或 day
     let currentTypeFilter = 'all'; // all, income, expense
     let editingId = null;
+    let isAddingNew = false;
 
     // 元素
     const btnMonth = document.getElementById("btnMonth");
@@ -418,8 +444,10 @@
     const totalIncome = document.getElementById("totalIncome");
     const totalExpense = document.getElementById("totalExpense");
     const totalBalance = document.getElementById("totalBalance");
+    const addRecordBtn = document.getElementById("addRecordBtn");
 
     const editModal = document.getElementById("editModal");
+    const modalTitle = document.getElementById("modalTitle");
     const editForm = document.getElementById("editForm");
     const editDate = document.getElementById("editDate");
     const editType = document.getElementById("editType");
@@ -453,6 +481,7 @@
         // 載入後按日期排序 (最新在上)
         allData.sort((a, b) => b.date.localeCompare(a.date));
         updateSummary();
+        renderTable();
       } catch (err) {
         alert("讀取資料失敗：" + err.message);
       }
@@ -503,6 +532,13 @@
       // 清空表格
       recordsTableBody.innerHTML = "";
 
+      if (filtered.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="6" style="text-align: center;">沒有找到記錄</td>`;
+        recordsTableBody.appendChild(tr);
+        return;
+      }
+
       // 顯示資料 (已按日期排序，最新在上)
       filtered.forEach(item => {
         const tr = document.createElement("tr");
@@ -532,7 +568,6 @@
               await db.collection("records").doc(id).delete();
               alert("刪除成功");
               await loadData();
-              renderTable();
             } catch (err) {
               alert("刪除失敗：" + err.message);
             }
@@ -550,8 +585,12 @@
     }
 
     function openEditModal(id) {
+      isAddingNew = false;
+      modalTitle.textContent = "編輯記錄";
+      
       const item = allData.find(d => d.id === id);
       if (!item) return alert("找不到該筆資料");
+      
       editingId = id;
       editDate.value = item.date;
       editType.value = item.type;
@@ -565,8 +604,32 @@
       updateCategoryOptions(item.type);
     }
 
+    function openAddModal() {
+      isAddingNew = true;
+      modalTitle.textContent = "新增記錄";
+      editingId = null;
+      
+      // 設置默認值
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      
+      editDate.value = `${year}-${month}-${day}`;
+      editType.value = "expense";
+      editItem.value = "";
+      editCategory.value = "";
+      editAmount.value = "";
+      editNote.value = "";
+      editModal.style.display = "flex";
+      
+      // 更新分類選項
+      updateCategoryOptions(editType.value);
+    }
+
     function closeEditModal() {
       editingId = null;
+      isAddingNew = false;
       editModal.style.display = "none";
       editForm.reset();
     }
@@ -623,6 +686,11 @@
       renderTable();
     });
 
+    // 新增記錄按鈕
+    addRecordBtn.addEventListener("click", () => {
+      openAddModal();
+    });
+
     // 編輯彈窗取消按鈕
     editCancelBtn.addEventListener("click", () => {
       closeEditModal();
@@ -631,24 +699,32 @@
     // 編輯表單送出
     editForm.addEventListener("submit", async e => {
       e.preventDefault();
-      if (!editingId) return alert("編輯時發生錯誤，找不到資料ID");
-
-      const updatedData = {
-      date: editDate.value,
-      type: editType.value,
-      category: editCategory.value || null,
-      amount: parseFloat(editAmount.value),
-      note: editNote.value || null,
-    };
+      
+      const recordData = {
+        date: editDate.value,
+        type: editType.value,
+        item: editItem.value || null,
+        category: editCategory.value || null,
+        amount: parseFloat(editAmount.value),
+        note: editNote.value || null,
+      };
 
       try {
-        await db.collection("records").doc(editingId).update(updatedData);
-        alert("✅ 編輯成功");
+        if (isAddingNew) {
+          // 新增記錄
+          await db.collection("records").add(recordData);
+          alert("✅ 新增成功");
+        } else {
+          // 編輯現有記錄
+          if (!editingId) return alert("編輯時發生錯誤，找不到資料ID");
+          await db.collection("records").doc(editingId).update(recordData);
+          alert("✅ 編輯成功");
+        }
+        
         closeEditModal();
         await loadData();
-        renderTable();
       } catch (err) {
-        alert("更新失敗：" + err.message);
+        alert("操作失敗：" + err.message);
       }
     });
 
@@ -660,8 +736,13 @@
       const month = String(today.getMonth() + 1).padStart(2, '0');
       dateInput.value = `${year}-${month}`;
       
+      // 載入資料
       await loadData();
-      renderTable();
+      
+      // 類型變更時更新分類選項
+      editType.addEventListener("change", function() {
+        updateCategoryOptions(this.value);
+      });
     })();
   </script>
 </body>
