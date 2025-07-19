@@ -327,16 +327,17 @@
           <div class="form-group">
             <label for="type">類型</label>
             <select id="type" required>
-            <option value="">請選擇</option>
-            <option value="income">收入</option>
-            <option value="expense" selected>支出</option>
-          </select>
+              <option value="">請選擇</option>
+              <option value="income">收入</option>
+              <option value="expense" selected>支出</option>
+            </select>
           </div>
           
           <div class="form-group">
             <label for="category">項目</label>
-            <select id="category" required disabled>
-              <option value="">請先選擇類型</option>
+            <select id="category" required>
+              <option value="">請選擇項目</option>
+              <!-- 支出類別將由JavaScript動態載入 -->
             </select>
           </div>
           
@@ -470,29 +471,24 @@
     const today = new Date();
     monthPicker.value = today.toISOString().slice(0,7);
 
+    // 載入類別選項
+    function loadCategories(type) {
+      categorySelect.innerHTML = '<option value="">請選擇項目</option>';
+      const categories = type === "income" ? incomeCategories : expenseCategories;
+      
+      categories.forEach(cat => {
+        const option = document.createElement("option");
+        option.value = cat.value;
+        option.textContent = cat.text;
+        categorySelect.appendChild(option);
+      });
+    }
+
     // 類型選擇變化事件
     typeSelect.addEventListener("change", function() {
       const selectedType = this.value;
-      categorySelect.innerHTML = '<option value="">請選擇項目</option>';
-      
-      if (selectedType === "income") {
-        categorySelect.disabled = false;
-        incomeCategories.forEach(cat => {
-          const option = document.createElement("option");
-          option.value = cat.value;
-          option.textContent = cat.text;
-          categorySelect.appendChild(option);
-        });
-      } else if (selectedType === "expense") {
-        categorySelect.disabled = false;
-        expenseCategories.forEach(cat => {
-          const option = document.createElement("option");
-          option.value = cat.value;
-          option.textContent = cat.text;
-          categorySelect.appendChild(option);
-        });
-      } else {
-        categorySelect.disabled = true;
+      if (selectedType) {
+        loadCategories(selectedType);
       }
     });
 
@@ -522,7 +518,8 @@
         });
         alert("✅ 記錄新增成功！");
         form.reset();
-        categorySelect.disabled = true;
+        typeSelect.value = "expense"; // 重置後仍保持支出選項
+        loadCategories("expense"); // 重新載入支出類別
         await loadData();
         updateFinancialSummary();
       } catch (err) {
@@ -631,6 +628,10 @@
       
       // 設置預設日期為今天
       document.getElementById("date").value = today.toISOString().slice(0,10);
+      
+      // 預設選擇支出並載入類別
+      typeSelect.value = "expense";
+      loadCategories("expense");
     })();
   </script>
 </body>
