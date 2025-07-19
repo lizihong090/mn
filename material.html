@@ -15,6 +15,31 @@
       color: #e0e0e0;
     }
 
+    /* 返回按鈕位置調整 */
+    .back-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 8px 15px;
+      background-color: #252525;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px #000000cc;
+      transition: background-color 0.3s;
+      z-index: 100;
+    }
+    .back-button:hover {
+      background-color: #3a3a3a;
+    }
+
+    /* 主內容容器 */
+    .main-container {
+      position: relative;
+      padding-top: 60px; /* 為返回按鈕留出空間 */
+    }
+
     /* 表格 */
     table {
       width: 100%;
@@ -74,25 +99,6 @@
       box-shadow: 0 0 6px #4b6cb7aa;
       background-color: #2d2d2d;
       color: #e0e0e0;
-    }
-
-    /* 導航按鈕 */
-    .nav-button {
-      display: block;
-      width: 200px;
-      margin: 30px auto;
-      padding: 10px;
-      background-color: #252525;
-      color: #ffffff;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 5px;
-      font-weight: bold;
-      box-shadow: 0 4px 12px #000000cc;
-      transition: background-color 0.3s;
-    }
-    .nav-button:hover {
-      background-color: #3a3a3a;
     }
 
     /* 切換按鈕群組 */
@@ -240,55 +246,58 @@
   </style>
 </head>
 <body>
-  <h2 style="color:#ffffff;">記帳系統</h2>
+  <!-- 返回按鈕移至左上角 -->
+  <a href="index.html" class="back-button">← 返回</a>
 
-  <div class="filter-toggle">
-    <button id="btnMonth" class="active">按月查看</button>
-    <button id="btnDay">按日查看</button>
-  </div>
+  <div class="main-container">
+    <h2 style="color:#ffffff; text-align: center;">記帳系統</h2>
 
-  <div class="type-filter">
-    <button id="btnAll" class="active">全部記錄</button>
-    <button id="btnIncome">僅收入</button>
-    <button id="btnExpense">僅支出</button>
-  </div>
-
-  <!-- 日期選擇區域 -->
-  <div class="date-selector">
-    <label id="dateLabel" for="dateInput">選擇月份：</label>
-    <input type="month" id="dateInput" />
-  </div>
-
-  <!-- 統計資訊 -->
-  <div class="summary">
-    <div class="summary-item">
-      <div class="summary-label">收入總計</div>
-      <div class="summary-value income" id="totalIncome">NT$ 0.00</div>
+    <div class="filter-toggle">
+      <button id="btnMonth" class="active">按月查看</button>
+      <button id="btnDay">按日查看</button>
     </div>
-    <div class="summary-item">
-      <div class="summary-label">支出總計</div>
-      <div class="summary-value expense" id="totalExpense">NT$ 0.00</div>
+
+    <div class="type-filter">
+      <button id="btnAll" class="active">全部記錄</button>
+      <button id="btnIncome">僅收入</button>
+      <button id="btnExpense">僅支出</button>
     </div>
-    <div class="summary-item">
-      <div class="summary-label">結餘</div>
-      <div class="summary-value balance" id="totalBalance">NT$ 0.00</div>
+
+    <!-- 日期選擇區域 -->
+    <div class="date-selector">
+      <label id="dateLabel" for="dateInput">選擇月份：</label>
+      <input type="month" id="dateInput" />
     </div>
+
+    <!-- 統計資訊 -->
+    <div class="summary">
+      <div class="summary-item">
+        <div class="summary-label">收入總計</div>
+        <div class="summary-value income" id="totalIncome">NT$ 0.00</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">支出總計</div>
+        <div class="summary-value expense" id="totalExpense">NT$ 0.00</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">結餘</div>
+        <div class="summary-value balance" id="totalBalance">NT$ 0.00</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>類型</th>
+          <th>金額</th>
+          <th>備註</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="recordsTableBody"></tbody>
+    </table>
   </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>日期</th>
-        <th>類型</th>
-        <th>金額</th>
-        <th>備註</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody id="recordsTableBody"></tbody>
-  </table>
-
-  <a href="index.html" class="nav-button">返回財務分析面板</a>
 
   <!-- 編輯彈窗 Modal -->
   <div id="editModal">
