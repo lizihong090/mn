@@ -345,14 +345,6 @@
           分類<br />
           <select id="editCategory">
             <option value="">無分類</option>
-            <option value="飲食">飲食</option>
-            <option value="交通">交通</option>
-            <option value="娛樂">娛樂</option>
-            <option value="購物">購物</option>
-            <option value="居住">居住</option>
-            <option value="薪資">薪資</option>
-            <option value="投資">投資</option>
-            <option value="其他">其他</option>
           </select>
         </label>
         <label>
@@ -385,6 +377,33 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // 分類選項
+    const categoryOptions = {
+      expense: [
+        { value: "飲食", text: "飲食" },
+        { value: "交通", text: "交通" },
+        { value: "娛樂", text: "娛樂" },
+        { value: "購物", text: "購物" },
+        { value: "個人", text: "個人" },
+        { value: "醫療", text: "醫療" },
+        { value: "居家", text: "居家" },
+        { value: "家庭", text: "家庭" },
+        { value: "生活", text: "生活" },
+        { value: "學習", text: "學習" },
+        { value: "還款", text: "還款" },
+        { value: "其他支出", text: "其他支出" }
+      ],
+      income: [
+        { value: "薪資", text: "薪資" },
+        { value: "獎金", text: "獎金" },
+        { value: "投資", text: "投資" },
+        { value: "還款", text: "還款" },
+        { value: "彩券", text: "彩券" },
+        { value: "利息", text: "利息" },
+        { value: "其他收入", text: "其他收入" }
+      ]
+    };
+
     // 全域變數
     let allData = [];
     let currentFilter = 'month'; // month 或 day
@@ -413,6 +432,19 @@
     const editAmount = document.getElementById("editAmount");
     const editNote = document.getElementById("editNote");
     const editCancelBtn = document.getElementById("editCancelBtn");
+
+    // 更新分類選項
+    function updateCategoryOptions(type) {
+      editCategory.innerHTML = '<option value="">無分類</option>';
+      const options = categoryOptions[type] || [];
+      
+      options.forEach(option => {
+        const opt = document.createElement('option');
+        opt.value = option.value;
+        opt.textContent = option.text;
+        editCategory.appendChild(opt);
+      });
+    }
 
     // 載入資料
     async function loadData() {
@@ -528,9 +560,13 @@
       editDate.value = item.date;
       editType.value = item.type;
       editItem.value = item.item || "";
-      editCategory.value = item.category || "";
       editAmount.value = item.amount;
       editNote.value = item.note || "";
+      
+      // 根據類型更新分類選項
+      updateCategoryOptions(item.type);
+      editCategory.value = item.category || "";
+      
       editModal.style.display = "flex";
     }
 
@@ -539,6 +575,11 @@
       editModal.style.display = "none";
       editForm.reset();
     }
+
+    // 類型變更時更新分類選項
+    editType.addEventListener("change", function() {
+      updateCategoryOptions(this.value);
+    });
 
     // 按鈕事件
     btnMonth.addEventListener("click", () => {
