@@ -175,6 +175,28 @@
       border: 1px solid #333;
     }
     
+    .charts-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .chart-half {
+      flex: 1;
+      min-width: 300px;
+    }
+    
+    @media (max-width: 768px) {
+      .charts-row {
+        flex-direction: column;
+      }
+      
+      .chart-half {
+        width: 100%;
+      }
+    }
+    
     @media (max-width: 480px) {
       .chart-container {
         height: 220px;
@@ -227,10 +249,23 @@
       </div>
     </div>
     
-    <div class="chart-wrapper">
-      <h3 class="card-title"><i class="fas fa-chart-pie"></i> 收支類型分佈</h3>
-      <div class="chart-container">
-        <canvas id="distributionChart"></canvas>
+    <div class="charts-row">
+      <div class="chart-half">
+        <div class="chart-wrapper">
+          <h3 class="card-title"><i class="fas fa-chart-pie"></i> 收支類型分佈</h3>
+          <div class="chart-container">
+            <canvas id="distributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="chart-half">
+        <div class="chart-wrapper">
+          <h3 class="card-title"><i class="fas fa-chart-pie"></i> 項目分類分佈</h3>
+          <div class="chart-container">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -263,9 +298,10 @@
     // 圖表上下文
     const combinedCtx = document.getElementById("combinedChart").getContext('2d');
     const distributionCtx = document.getElementById("distributionChart").getContext('2d');
+    const categoryCtx = document.getElementById("categoryChart").getContext('2d');
 
     let allData = [];
-    let combinedChart, distributionChart;
+    let combinedChart, distributionChart, categoryChart;
 
     // 設置預設月份為當前月
     const today = new Date();
@@ -340,6 +376,7 @@
     function renderCharts() {
       renderCombinedChart();
       renderDistributionChart();
+      renderCategoryChart();
     }
 
     // 渲染合併圖表（柱狀圖+折線圖）
@@ -568,7 +605,7 @@
       });
     }
 
-    // 渲染分佈圖
+    // 渲染收支分佈圖
     function renderDistributionChart() {
       if (distributionChart) distributionChart.destroy();
       
@@ -646,6 +683,133 @@
               callbacks: {
                 label: function(context) {
                   return `${context.label}: ${Math.round(context.raw)}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 渲染項目分類分佈圖
+    function renderCategoryChart() {
+      if (categoryChart) categoryChart.destroy();
+      
+      if (!allData.length) {
+        categoryChart = new Chart(categoryCtx, {
+          type: 'pie',
+          data: { datasets: [] },
+          options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#e0e0e0',
+                  font: {
+                    size: window.innerWidth < 480 ? 10 : 12
+                  }
+                }
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      const selectedMonth = monthPicker.value;
+      if (!selectedMonth) return;
+
+      const [year, month] = selectedMonth.split('-');
+      const selectedYear = parseInt(year);
+      const selectedMonthNum = parseInt(month);
+
+      // 篩選當月數據
+      const monthStartDate = new Date(selectedYear, selectedMonthNum -1, 1);
+      const monthEndDate = new Date(selectedYear, selectedMonthNum, 0);
+
+      const monthData = allData.filter(item => {
+        const d = new Date(item.date);
+        return d >= monthStartDate && d <= monthEndDate;
+      });
+
+      // 分類收入與支出數據
+      const incomeData = monthData.filter(d => d.type === 'income');
+      const expenseData = monthData.filter(d => d.type === 'expense');
+
+      // 計算收入分類分佈
+      const incomeCategories = {};
+      incomeData.forEach(item => {
+        const category = item.category || '其他收入';
+        if (!incomeCategories[category]) {
+          incomeCategories[category] = 0;
+        }
+        incomeCategories[category] += item.amount;
+      });
+
+      // 計算支出分類分佈
+      const expenseCategories = {};
+      expenseData.forEach(item => {
+        const category = item.category || '其他支出';
+        if (!expenseCategories[category]) {
+          expenseCategories[category] = 0;
+        }
+        expenseCategories[category] += item.amount;
+      });
+
+      // 準備圖表數據
+      const incomeLabels = Object.keys(incomeCategories);
+      const incomeValues = Object.values(incomeCategories);
+      const expenseLabels = Object.keys(expenseCategories);
+      const expenseValues = Object.values(expenseCategories);
+
+      // 生成顏色
+      function generateColors(count) {
+        const colors = [];
+        const hueStep = 360 / count;
+        for (let i = 0; i < count; i++) {
+          const hue = i * hueStep;
+          colors.push(`hsl(${hue}, 70%, 60%)`);
+        }
+        return colors;
+      }
+
+      // 創建分類分佈圖表
+      categoryChart = new Chart(categoryCtx, {
+        type: 'pie',
+        data: {
+          labels: [...incomeLabels, ...expenseLabels],
+          datasets: [{
+            data: [...incomeValues, ...expenseValues],
+            backgroundColor: [
+              ...generateColors(incomeLabels.length),
+              ...generateColors(expenseLabels.length).map(c => c.replace('60%)', '40%)'))
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#e0e0e0',
+                font: {
+                  size: window.innerWidth < 480 ? 10 : 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return `${label}: ${Math.round(value)} (${percentage}%)`;
                 }
               }
             }
