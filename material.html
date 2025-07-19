@@ -300,6 +300,21 @@
   </div>
 
   <!-- 編輯彈窗 Modal -->
+  <table>
+  <thead>
+    <tr>
+      <th>日期</th>
+      <th>類型</th>
+      <th>項目</th> <!-- 新增的項目欄位 -->
+      <th>金額</th>
+      <th>備註</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody id="recordsTableBody"></tbody>
+</table>
+
+<!-- 編輯彈窗 Modal -->
   <div id="editModal">
     <div>
       <h3>編輯記錄</h3>
@@ -316,6 +331,10 @@
           </select>
         </label>
         <label>
+          項目<br /> <!-- 新增的項目輸入欄位 -->
+          <input type="text" id="editItem" required />
+        </label>
+        <label>
           金額<br />
           <input type="number" id="editAmount" min="0" step="0.01" required />
         </label>
@@ -330,7 +349,6 @@
       </form>
     </div>
   </div>
-
   <script>
     // Firebase 設定
     const firebaseConfig = {
