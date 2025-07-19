@@ -122,6 +122,31 @@
       color: #e0e0e0;
     }
 
+    /* 日期選擇容器 */
+    .date-selector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 15px 0;
+      gap: 10px;
+    }
+    
+    /* 日期選擇標籤 */
+    .date-selector label {
+      color: #b0b0b0;
+      white-space: nowrap;
+    }
+    
+    /* 日期選擇輸入框 */
+    .date-selector input[type="date"],
+    .date-selector input[type="month"] {
+      padding: 8px;
+      border-radius: 5px;
+      background-color: #2d2d2d;
+      border: 1px solid #333;
+      color: #e0e0e0;
+    }
+
     /* 編輯彈窗 Modal 背景和卡片 */
     #editModal {
       display: none;
@@ -180,24 +205,75 @@
       box-shadow: 0 4px 12px #274a9dcc;
       color: #fff;
     }
+    
+    /* 統計資訊 */
+    .summary {
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #1e1e1e;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-around;
+      box-shadow: 0 2px 6px #000000cc;
+    }
+    .summary-item {
+      text-align: center;
+    }
+    .summary-label {
+      color: #b0b0b0;
+      font-size: 0.9em;
+    }
+    .summary-value {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    .income {
+      color: #4CAF50;
+    }
+    .expense {
+      color: #F44336;
+    }
+    .balance {
+      color: #2196F3;
+    }
   </style>
 </head>
 <body>
   <h2 style="color:#ffffff;">記帳系統</h2>
 
   <div class="filter-toggle">
-    <button id="btnMonth" class="active">按月</button>
-    <button id="btnDay">按日</button>
+    <button id="btnMonth" class="active">按月查看</button>
+    <button id="btnDay">按日查看</button>
   </div>
 
   <div class="type-filter">
-    <button id="btnAll" class="active">全部</button>
-    <button id="btnIncome">收入</button>
-    <button id="btnExpense">支出</button>
+    <button id="btnAll" class="active">全部記錄</button>
+    <button id="btnIncome">僅收入</button>
+    <button id="btnExpense">僅支出</button>
   </div>
 
-  <label for="datePicker" style="color:#b0b0b0;">選擇月份：</label>
-  <select id="datePicker"></select>
+  <!-- 日期選擇區域 -->
+  <div class="date-selector">
+    <label id="dateLabel" for="dateInput">選擇月份：</label>
+    <input type="month" id="dateInput" />
+  </div>
+
+  <!-- 統計資訊 -->
+  <div class="summary">
+    <div class="summary-item">
+      <div class="summary-label">收入總計</div>
+      <div class="summary-value income" id="totalIncome">NT$ 0.00</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">支出總計</div>
+      <div class="summary-value expense" id="totalExpense">NT$ 0.00</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">結餘</div>
+      <div class="summary-value balance" id="totalBalance">NT$ 0.00</div>
+    </div>
+  </div>
 
   <table>
     <thead>
@@ -272,8 +348,12 @@
     const btnAll = document.getElementById("btnAll");
     const btnIncome = document.getElementById("btnIncome");
     const btnExpense = document.getElementById("btnExpense");
-    const datePicker = document.getElementById("datePicker");
+    const dateLabel = document.getElementById("dateLabel");
+    const dateInput = document.getElementById("dateInput");
     const recordsTableBody = document.getElementById("recordsTableBody");
+    const totalIncome = document.getElementById("totalIncome");
+    const totalExpense = document.getElementById("totalExpense");
+    const totalBalance = document.getElementById("totalBalance");
 
     const editModal = document.getElementById("editModal");
     const editForm = document.getElementById("editForm");
@@ -291,37 +371,34 @@
           id: doc.id,
           ...doc.data()
         }));
+        updateSummary();
       } catch (err) {
         alert("讀取資料失敗：" + err.message);
       }
     }
 
-    // 渲染日期下拉選單
-    function renderDateOptions() {
-      const datesSet = new Set();
-      allData.forEach(item => {
-        if (currentFilter === 'month') {
-          // 取年月
-          const ym = item.date.slice(0, 7);
-          datesSet.add(ym);
-        } else {
-          // 取完整日期
-          datesSet.add(item.date);
-        }
-      });
-      const dates = Array.from(datesSet).sort((a,b) => a.localeCompare(b));
-      datePicker.innerHTML = "";
-      dates.forEach(d => {
-        const opt = document.createElement("option");
-        opt.value = d;
-        opt.textContent = d;
-        datePicker.appendChild(opt);
-      });
+    // 更新統計資訊
+    function updateSummary(filteredData) {
+      const data = filteredData || allData;
+      
+      const income = data
+        .filter(item => item.type === 'income')
+        .reduce((sum, item) => sum + item.amount, 0);
+      
+      const expense = data
+        .filter(item => item.type === 'expense')
+        .reduce((sum, item) => sum + item.amount, 0);
+      
+      const balance = income - expense;
+      
+      totalIncome.textContent = `NT$ ${income.toFixed(2)}`;
+      totalExpense.textContent = `NT$ ${expense.toFixed(2)}`;
+      totalBalance.textContent = `NT$ ${balance.toFixed(2)}`;
     }
 
     // 渲染表格
     function renderTable() {
-      const filterVal = datePicker.value;
+      const filterVal = dateInput.value;
       let filtered = allData;
 
       // 篩選類型
@@ -332,11 +409,15 @@
       // 篩選日期
       if (filterVal) {
         if (currentFilter === 'month') {
-          filtered = filtered.filter(d => d.date.startsWith(filterVal));
+          const yearMonth = filterVal.slice(0, 7);
+          filtered = filtered.filter(d => d.date.startsWith(yearMonth));
         } else {
           filtered = filtered.filter(d => d.date === filterVal);
         }
       }
+
+      // 更新統計資訊
+      updateSummary(filtered);
 
       // 清空表格
       recordsTableBody.innerHTML = "";
@@ -366,7 +447,6 @@
               await db.collection("records").doc(id).delete();
               alert("刪除成功");
               await loadData();
-              renderDateOptions();
               renderTable();
             } catch (err) {
               alert("刪除失敗：" + err.message);
@@ -406,14 +486,17 @@
       currentFilter = 'month';
       btnMonth.classList.add("active");
       btnDay.classList.remove("active");
-      renderDateOptions();
+      dateLabel.textContent = "選擇月份：";
+      dateInput.type = "month";
       renderTable();
     });
+    
     btnDay.addEventListener("click", () => {
       currentFilter = 'day';
       btnDay.classList.add("active");
       btnMonth.classList.remove("active");
-      renderDateOptions();
+      dateLabel.textContent = "選擇日期：";
+      dateInput.type = "date";
       renderTable();
     });
 
@@ -424,6 +507,7 @@
       btnExpense.classList.remove("active");
       renderTable();
     });
+    
     btnIncome.addEventListener("click", () => {
       currentTypeFilter = 'income';
       btnIncome.classList.add("active");
@@ -431,6 +515,7 @@
       btnExpense.classList.remove("active");
       renderTable();
     });
+    
     btnExpense.addEventListener("click", () => {
       currentTypeFilter = 'expense';
       btnExpense.classList.add("active");
@@ -439,7 +524,7 @@
       renderTable();
     });
 
-    datePicker.addEventListener("change", () => {
+    dateInput.addEventListener("change", () => {
       renderTable();
     });
 
@@ -465,7 +550,6 @@
         alert("✅ 編輯成功");
         closeEditModal();
         await loadData();
-        renderDateOptions();
         renderTable();
       } catch (err) {
         alert("更新失敗：" + err.message);
@@ -474,8 +558,13 @@
 
     // 初始化載入
     (async function init() {
+      // 設置日期選擇器為當前月份
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      dateInput.value = `${year}-${month}`;
+      
       await loadData();
-      renderDateOptions();
       renderTable();
     })();
   </script>
