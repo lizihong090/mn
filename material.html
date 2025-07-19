@@ -5,6 +5,7 @@
   <title>記帳系統 - 深色主題</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* 主背景 */
     body {
@@ -38,6 +39,71 @@
     .main-container {
       position: relative;
       padding-top: 60px; /* 為返回按鈕留出空間 */
+    }
+
+    /* 新增記錄表單樣式 */
+    .add-record-form {
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 10px #000000aa;
+    }
+    
+    .add-record-form h3 {
+      margin-top: 0;
+      color: #ffffff;
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .form-group {
+      flex: 1;
+      min-width: 150px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #b0b0b0;
+    }
+    
+    .form-group input, 
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      background-color: #2d2d2d;
+      border: 1px solid #333;
+      border-radius: 5px;
+      color: #e0e0e0;
+    }
+    
+    .form-actions {
+      text-align: right;
+    }
+    
+    .form-actions button {
+      padding: 8px 16px;
+      background-color: #4b6cb7;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .form-actions button:hover {
+      background-color: #3a5a9c;
     }
 
     /* 表格 */
@@ -243,6 +309,29 @@
     .balance {
       color: #2196F3;
     }
+    
+    /* 響應式調整 */
+    @media (max-width: 600px) {
+      .form-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .summary {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .filter-toggle, .type-filter {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      
+      .filter-toggle button, .type-filter button {
+        margin: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -251,6 +340,43 @@
 
   <div class="main-container">
     <h2 style="color:#ffffff; text-align: center;">記帳系統</h2>
+
+    <!-- 新增記錄表單 -->
+    <div class="add-record-form">
+      <h3><i class="fas fa-plus-circle"></i> 新增記錄</h3>
+      <form id="addRecordForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newDate">日期</label>
+            <input type="date" id="newDate" required />
+          </div>
+          
+          <div class="form-group">
+            <label for="newType">類型</label>
+            <select id="newType" required>
+              <option value="income">收入</option>
+              <option value="expense" selected>支出</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="newAmount">金額</label>
+            <input type="number" id="newAmount" min="0" step="0.01" required />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label for="newNote">備註</label>
+            <input type="text" id="newNote" placeholder="輸入交易備註..." />
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit"><i class="fas fa-save"></i> 儲存記錄</button>
+        </div>
+      </form>
+    </div>
 
     <div class="filter-toggle">
       <button id="btnMonth" class="active">按月查看</button>
@@ -364,6 +490,14 @@
     const totalExpense = document.getElementById("totalExpense");
     const totalBalance = document.getElementById("totalBalance");
 
+    // 新增表單元素
+    const addRecordForm = document.getElementById("addRecordForm");
+    const newDate = document.getElementById("newDate");
+    const newType = document.getElementById("newType");
+    const newAmount = document.getElementById("newAmount");
+    const newNote = document.getElementById("newNote");
+
+    // 編輯彈窗元素
     const editModal = document.getElementById("editModal");
     const editForm = document.getElementById("editForm");
     const editDate = document.getElementById("editDate");
@@ -378,7 +512,8 @@
         const snapshot = await db.collection("records").get();
         allData = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          amount: parseFloat(doc.data().amount) // 確保金額是數字
         }));
         // 載入後按日期排序 (最新在上)
         allData.sort((a, b) => b.date.localeCompare(a.date));
@@ -539,6 +674,38 @@
       renderTable();
     });
 
+    // 新增記錄表單提交
+    addRecordForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      
+      const recordData = {
+        date: newDate.value,
+        type: newType.value,
+        amount: parseFloat(newAmount.value),
+        note: newNote.value,
+        createdAt: new Date().toISOString()
+      };
+      
+      try {
+        // 新增記錄到Firestore
+        await db.collection("records").add(recordData);
+        
+        // 顯示成功訊息
+        alert("✅ 記錄新增成功！");
+        
+        // 重置表單
+        addRecordForm.reset();
+        newType.value = "expense"; // 重置後仍保持支出選項
+        
+        // 重新載入資料並更新表格
+        await loadData();
+        renderTable();
+      } catch (err) {
+        alert("❌ 新增失敗：" + err.message);
+        console.error(err);
+      }
+    });
+
     // 編輯彈窗取消按鈕
     editCancelBtn.addEventListener("click", () => {
       closeEditModal();
@@ -573,7 +740,10 @@
       const today = new Date();
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      
       dateInput.value = `${year}-${month}`;
+      newDate.value = `${year}-${month}-${day}`; // 設置新增表單的日期為今天
       
       await loadData();
       renderTable();
