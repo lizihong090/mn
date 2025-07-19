@@ -261,7 +261,7 @@
       
       <div class="chart-half">
         <div class="chart-wrapper">
-          <h3 class="card-title"><i class="fas fa-chart-pie"></i> 項目分類分佈</h3>
+          <h3 class="card-title"><i class="fas fa-chart-pie"></i> 支出分類分佈</h3>
           <div class="chart-container">
             <canvas id="categoryChart"></canvas>
           </div>
@@ -691,7 +691,7 @@
       });
     }
 
-    // 渲染項目分類分佈圖
+    // 渲染支出分類分佈圖
     function renderCategoryChart() {
       if (categoryChart) categoryChart.destroy();
       
@@ -734,19 +734,8 @@
         return d >= monthStartDate && d <= monthEndDate;
       });
 
-      // 分類收入與支出數據
-      const incomeData = monthData.filter(d => d.type === 'income');
+      // 只篩選支出數據
       const expenseData = monthData.filter(d => d.type === 'expense');
-
-      // 計算收入分類分佈
-      const incomeCategories = {};
-      incomeData.forEach(item => {
-        const category = item.category || '其他收入';
-        if (!incomeCategories[category]) {
-          incomeCategories[category] = 0;
-        }
-        incomeCategories[category] += item.amount;
-      });
 
       // 計算支出分類分佈
       const expenseCategories = {};
@@ -759,8 +748,6 @@
       });
 
       // 準備圖表數據
-      const incomeLabels = Object.keys(incomeCategories);
-      const incomeValues = Object.values(incomeCategories);
       const expenseLabels = Object.keys(expenseCategories);
       const expenseValues = Object.values(expenseCategories);
 
@@ -779,13 +766,10 @@
       categoryChart = new Chart(categoryCtx, {
         type: 'pie',
         data: {
-          labels: [...incomeLabels, ...expenseLabels],
+          labels: expenseLabels,
           datasets: [{
-            data: [...incomeValues, ...expenseValues],
-            backgroundColor: [
-              ...generateColors(incomeLabels.length),
-              ...generateColors(expenseLabels.length).map(c => c.replace('60%)', '40%)'))
-            ],
+            data: expenseValues,
+            backgroundColor: generateColors(expenseLabels.length),
             borderWidth: 0
           }]
         },
